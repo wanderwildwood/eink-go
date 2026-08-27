@@ -66,8 +66,16 @@ jobs:
           # The checksum file names the tarball without a path, so it has to be checked
           # from the directory the tarball is actually in.
           (cd engine && sha256sum -c gnugo-3.8.tar.gz.sha256)
-          ANDROID_NDK_HOME=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1) \
-            ./engine/build-gnugo.sh
+          # The script pins the NDK version and refuses to build with another, because
+          # newer clang produces an engine that aborts when a game is counted. Taking
+          # whatever the runner image ships is what shipped a broken v1.0.3, so install
+          # the pinned one rather than picking the newest.
+          NDK_VERSION=$(sed -n 's/^NDK_VERSION=//p' engine/build-gnugo.sh)
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+            echo "Installing pinned NDK $NDK_VERSION"
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION"
+          fi
+          ./engine/build-gnugo.sh
           git diff --stat -- app/src/main/jniLibs || true
 
       - name: Build release APK

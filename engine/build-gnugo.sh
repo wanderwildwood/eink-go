@@ -29,13 +29,49 @@ BUILD="$HERE/build"
 SRC="$BUILD/gnugo-3.8"
 OUT="$HERE/../app/src/main/jniLibs/arm64-v8a"
 
-NDK="${ANDROID_NDK_HOME:-$HOME/Android/Sdk/ndk/28.2.13676358}"
+# The NDK is pinned, and the pin is load-bearing.
+#
+# GNU Go is C from 2009. Built for arm64 by the NDK 29 toolchain (clang 21) at -O2 it
+# compiles and plays, and then aborts inside final_score the moment a game is actually
+# counted: board.c:2540, ASSERT_ON_BOARD1(str), with str off the board. Every seed, every
+# time. The same source, same flags and same machine built by NDK 28 (clang 19) scores
+# every one of those games correctly and agrees with a host x86-64 build to the point.
+#
+# Whether clang 21 miscompiles this code or merely exploits undefined behaviour that was
+# always in it, the effect is the same and it is not visible until someone finishes a game.
+# -fno-strict-aliasing, -fwrapv and -O1 do not help; only -O0 does, and that is paid for in
+# thinking time on every move. So the toolchain is pinned to the last one known to produce
+# a correct engine, and CI installs this exact version rather than taking whatever the
+# runner image happens to ship - which is how a working v1.0.0 became a broken v1.0.3
+# without a line of this repository changing.
+NDK_VERSION=28.2.13676358
+SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+NDK="${ANDROID_NDK_HOME:-$SDK_ROOT/ndk/$NDK_VERSION}"
 API=31   # matches minSdk; the Kompakt runs Android 12 (API 31)
 TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
 CC="$TOOLCHAIN/bin/aarch64-linux-android$API-clang"
 STRIP="$TOOLCHAIN/bin/llvm-strip"
 
-[ -x "$CC" ] || { echo "No NDK clang at $CC (set ANDROID_NDK_HOME)" >&2; exit 1; }
+[ -x "$CC" ] || {
+  echo "No NDK clang at $CC" >&2
+  echo "Install the pinned NDK:  sdkmanager 'ndk;$NDK_VERSION'" >&2
+  exit 1
+}
+
+# Building with anything else is allowed, but never silently: a passing build that produces
+# an engine which dies on the first completed game is the failure this guards against.
+case "$NDK" in
+  *"$NDK_VERSION"*) ;;
+  *)
+    if [ "${GNUGO_ALLOW_ANY_NDK:-0}" = 1 ]; then
+      echo "WARNING: building with an unpinned NDK ($NDK). Finish a game before shipping it." >&2
+    else
+      echo "This is not the pinned NDK $NDK_VERSION but $NDK." >&2
+      echo "See the comment above; set GNUGO_ALLOW_ANY_NDK=1 to override deliberately." >&2
+      exit 1
+    fi
+    ;;
+esac
 
 echo "==> Unpacking"
 rm -rf "$BUILD"
