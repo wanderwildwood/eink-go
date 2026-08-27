@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Owns the engine process and the game in front of it.
@@ -31,6 +32,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var movesPlayed = 0
     private var consecutivePasses = 0
 
+    /**
+     * Held for as long as a move is being played out.
+     *
+     * The guards in the handlers below run on the main thread but the work happens in a
+     * coroutine, so without this a second tap that lands before the first has updated the
+     * state passes the same guard and plays a second move. On a slow E Ink refresh that is
+     * not a rare race: two quick taps on Pass would end the game by accident.
+     */
+    private val moveInFlight = AtomicBoolean(false)
+
     private val _state = MutableStateFlow<GameState?>(null)
     val state: StateFlow<GameState?> = _state.asStateFlow()
 
@@ -41,6 +52,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         engine = null
         movesPlayed = 0
         consecutivePasses = 0
+        moveInFlight.set(false)
         _state.value = GameState(config = config, phase = Phase.STARTING)
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -88,6 +100,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val active = engine ?: return
         if (current.phase != Phase.PLAYING || !current.isHumanTurn) return
 
+        if (!moveInFlight.compareAndSet(false, true)) return
         _state.update { it?.copy(preview = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -97,6 +110,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 continueAfterHumanMove(active, current.config)
             } catch (e: Exception) {
                 broken(e)
+            } finally {
+                moveInFlight.set(false)
             }
         }
     }
@@ -106,6 +121,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val active = engine ?: return
         if (current.phase != Phase.PLAYING || !current.isHumanTurn) return
 
+        if (!moveInFlight.compareAndSet(false, true)) return
         _state.update { it?.copy(preview = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -119,6 +135,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 broken(e)
+            } finally {
+                moveInFlight.set(false)
             }
         }
     }
@@ -147,6 +165,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val active = engine ?: return
         if (!current.canUndo) return
 
+        if (!moveInFlight.compareAndSet(false, true)) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val steps = minOf(current.movesPerUndo, movesPlayed)
@@ -160,6 +179,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 sync(active, Phase.PLAYING)
             } catch (e: Exception) {
                 broken(e)
+            } finally {
+                moveInFlight.set(false)
             }
         }
     }
