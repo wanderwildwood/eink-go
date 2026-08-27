@@ -54,6 +54,7 @@ fun GameScreen(
     // Keyed on the result, so a new result opens the dialog again after an earlier one
     // was dismissed to look at the board.
     var resultDismissed by remember(state.result) { mutableStateOf(false) }
+    var breakageDismissed by remember(state.message) { mutableStateOf(false) }
 
     BackHandler { menuOpen = true }
 
@@ -63,9 +64,21 @@ fun GameScreen(
             // Everything that is not the board lives up here now: whose turn it is, what
             // each side has captured, and the way out. The board gets the rest.
             TopAppBarMMD(
-                title = { StatusTitle(state) },
+                title = {
+                    StatusTitle(
+                        state = state,
+                        // A dismissed result is not a discarded one: the verdict stays in
+                        // this slot, so the slot is where you would press to ask for the
+                        // rest of it back.
+                        onReopen = { resultDismissed = false }.takeIf {
+                            state.phase == Phase.FINISHED && state.result != null
+                        },
+                    )
+                },
                 actions = {
-                    Captures(state)
+                    // A dead engine has nothing to say about prisoners, and the room it
+                    // was taking is room the explanation needs.
+                    if (state.phase != Phase.BROKEN) Captures(state)
                     MenuButton(onClick = { menuOpen = true })
                 },
             )
@@ -149,6 +162,35 @@ fun GameScreen(
             ) { TextMMD(text = "LOOK AT BOARD", fontSize = 15.sp) }
         }
     }
+
+    // The engine dying ends that game: there is no move to take back and no way to carry
+    // on. It used to be reported by putting the reason in the title bar, where a line and
+    // a half of it fitted - so the one thing worth reading, which is the game number that
+    // makes it happen again, was the part that got cut off.
+    if (state.phase == Phase.BROKEN && !breakageDismissed && !menuOpen) {
+        EInkDialog(onDismiss = { breakageDismissed = true }) {
+            TextMMD(text = "The game stopped", fontSize = 20.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(8.dp))
+            TextMMD(
+                text = state.message ?: "The engine stopped answering.",
+                fontSize = 15.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            ButtonMMD(
+                onClick = onNewGame,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            ) { TextMMD(text = "NEW GAME", fontSize = 15.sp) }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButtonMMD(
+                onClick = { breakageDismissed = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            ) { TextMMD(text = "LOOK AT BOARD", fontSize = 15.sp) }
+        }
+    }
 }
 
 /**
@@ -158,10 +200,17 @@ fun GameScreen(
  * to play" beside a black stone would be saying the same thing twice and taking the room
  * to do it. A passing message takes the same slot - it is always about the turn that has
  * just changed hands, so it never competes with the status for meaning.
+ *
+ * When a game is over this is also the way back to the full result - the score is worth
+ * reading twice, and the komi, the handicap and which stones were counted as dead are
+ * only in the dialog. [onReopen] is null whenever there is nothing to reopen.
  */
 @Composable
-private fun StatusTitle(state: GameState) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun StatusTitle(state: GameState, onReopen: (() -> Unit)? = null) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = if (onReopen == null) Modifier else Modifier.clickable(onClick = onReopen),
+    ) {
         val turnStone = when (state.phase) {
             Phase.PLAYING, Phase.THINKING -> state.toMove
             else -> null

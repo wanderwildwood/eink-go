@@ -18,7 +18,7 @@ import java.io.File
  */
 class GameStore(private val file: File) {
 
-    fun save(config: GameConfig, moves: List<Point?>) {
+    fun save(config: GameConfig, moves: List<Point?>, seed: Int) {
         try {
             file.writeText(
                 buildString {
@@ -29,6 +29,7 @@ class GameStore(private val file: File) {
                             config.difficulty.name,
                             config.humanColor.name,
                             config.handicap.toString(),
+                            seed.toString(),
                         ).joinToString(" ")
                     )
                     appendLine(moves.joinToString(" ") { it?.toVertex() ?: PASS })
@@ -71,7 +72,9 @@ class GameStore(private val file: File) {
             .split(" ")
             .filter { it.isNotBlank() }
             .map { if (it == PASS) null else parseVertex(it) ?: return null }
-        return SavedGame(config, played)
+        // The seed arrived after the format did. A file without one is still a perfectly
+        // good game; it just resumes under a new seed, the way it always used to.
+        return SavedGame(config, played, parts.getOrNull(4)?.toIntOrNull())
     }
 
     private companion object {
@@ -80,5 +83,10 @@ class GameStore(private val file: File) {
     }
 }
 
-/** A game to be rebuilt by replaying [moves]; a null move is a pass. */
-data class SavedGame(val config: GameConfig, val moves: List<Point?>)
+/**
+ * A game to be rebuilt by replaying [moves]; a null move is a pass.
+ *
+ * [seed] is the engine's, so that a resumed game carries on playing the game it was
+ * playing rather than a fresh one. Null in a file written before seeds were recorded.
+ */
+data class SavedGame(val config: GameConfig, val moves: List<Point?>, val seed: Int?)

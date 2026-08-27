@@ -22,6 +22,11 @@ enum class Stone {
 /** `Point(0, 0)` is the top left intersection as drawn. */
 data class Point(val col: Int, val row: Int)
 
+/**
+ * COMPUTER is shown as "GNU Go", since that is what it is. The name here stays as it is:
+ * it is written into every saved game, and renaming it would throw away a game in
+ * progress to change a word nobody sees.
+ */
 enum class Opponent { COMPUTER, HUMAN }
 
 /**

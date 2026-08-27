@@ -1,5 +1,6 @@
 package com.wanderwildwood.einkgo.engine
 
+import android.util.Log
 import com.wanderwildwood.einkgo.game.BOARD_SIZE
 import com.wanderwildwood.einkgo.game.Point
 import com.wanderwildwood.einkgo.game.Stone
@@ -28,22 +29,50 @@ class GnuGo(private val binaryPath: String) {
     private var process: Process? = null
     private var reader: BufferedReader? = null
     private var writer: BufferedWriter? = null
+    private var stderrDrain: Thread? = null
 
-    fun start(level: Int, komi: Double, handicap: Int) {
-        val started = ProcessBuilder(binaryPath, "--mode", "gtp").start()
+    /**
+     * The last thing the engine said on stderr before it stopped saying anything.
+     *
+     * GNU Go's internal assertions print the assertion that failed, the board, and an
+     * SGF of the position here, and then abort. That is the whole diagnosis of an engine
+     * bug, and it used to go straight in the bin - a crash reached the player as "Engine
+     * exited during genmove" and nothing else, twice unhelpfully, because the engine
+     * seeds itself from the clock and so the game cannot be played again to look at it.
+     */
+    private val diagnostics = ArrayDeque<String>()
+
+    // Not the instance lock: `send` holds that for the length of a move, and the drain
+    // thread must never wait on it. A blocked drain is a full pipe, and a full pipe stops
+    // the engine dead - which is the failure that thread exists to prevent.
+    private val diagnosticsLock = Any()
+
+    /**
+     * [seed] fixes the game the engine will play. GNU Go seeds itself from the clock when
+     * it is not told, which makes every game different but also makes none of them
+     * repeatable; passing our own keeps the variety and buys back the repeat.
+     */
+    fun start(level: Int, komi: Double, handicap: Int, seed: Int) {
+        val started = ProcessBuilder(binaryPath, "--mode", "gtp", "--seed", "$seed").start()
         process = started
         reader = started.inputStream.bufferedReader()
         writer = started.outputStream.bufferedWriter()
 
         // GNU Go says little on stderr in GTP mode, but an unread pipe that does fill up
-        // would block the engine mid-move, so drain it and drop it on the floor.
-        Thread {
+        // would block the engine mid-move, so it has to be drained whatever happens.
+        // Keeping the tail of what it says costs nothing.
+        stderrDrain = Thread {
             try {
-                started.errorStream.bufferedReader().forEachLine { }
+                started.errorStream.bufferedReader().forEachLine { line ->
+                    synchronized(diagnosticsLock) {
+                        diagnostics.addLast(line)
+                        while (diagnostics.size > DIAGNOSTIC_LINES) diagnostics.removeFirst()
+                    }
+                }
             } catch (_: IOException) {
-                // The process went away; nothing to drain.
+                // The process went away; nothing left to drain.
             }
-        }.apply { isDaemon = true }.start()
+        }.apply { isDaemon = true }.also { it.start() }
 
         send("boardsize $BOARD_SIZE")
         send("clear_board")
@@ -75,8 +104,7 @@ class GnuGo(private val binaryPath: String) {
 
         val lines = mutableListOf<String>()
         while (true) {
-            val line = input.readLine()
-                ?: throw GnuGoException("Engine exited during '$command'")
+            val line = input.readLine() ?: throw GnuGoException(deathMessage(command))
             if (line.isBlank()) {
                 if (lines.isEmpty()) continue else break
             }
@@ -91,6 +119,29 @@ class GnuGo(private val binaryPath: String) {
         return body
     }
 
+    /**
+     * What to say about an engine that stopped answering, having first asked it why.
+     *
+     * Everything it said goes to the log, where `adb logcat` can reach it. The phone
+     * itself gets the one line that makes the failure repeatable: the seed, which replays
+     * the same game move for move.
+     */
+    private fun deathMessage(command: String): String {
+        // stderr is a separate pipe drained by a separate thread, so it is routinely a
+        // line or two behind stdout closing. Its last words are the point of this path.
+        stderrDrain?.join(DRAIN_GRACE_MS)
+        val said = synchronized(diagnosticsLock) { diagnostics.toList() }
+        if (said.isEmpty()) return "The engine stopped during '$command'"
+
+        Log.e(TAG, "Engine died during '$command':\n" + said.joinToString("\n"))
+        val bug = said.firstOrNull { it.contains(BUG_REPORT) }
+            ?: return "The engine stopped during '$command'"
+        // gnugo 3.8 (seed 1787830629): You stepped on a bug.
+        val seed = SEED_IN_BUG_REPORT.find(bug)?.groupValues?.get(1)
+        return if (seed == null) "The engine hit a bug in itself"
+        else "The engine hit a bug in itself. Game $seed."
+    }
+
     fun play(color: Stone, point: Point?) {
         send("play ${color.gtp} ${point?.toVertex() ?: "pass"}")
     }
@@ -100,7 +151,11 @@ class GnuGo(private val binaryPath: String) {
         return when (answer) {
             "PASS" -> EngineMove.Pass
             "RESIGN" -> EngineMove.Resign
-            else -> parseVertex(answer)?.let(EngineMove::Play) ?: EngineMove.Pass
+            // An answer that is not a point is not a pass. A dying engine can put its
+            // own diagnostics down the same pipe its moves come along, and reading that
+            // as a pass would quietly hand the game over instead of saying what happened.
+            else -> parseVertex(answer)?.let(EngineMove::Play)
+                ?: throw GnuGoException("The engine answered '$answer', which is not a move")
         }
     }
 
@@ -155,6 +210,16 @@ class GnuGo(private val binaryPath: String) {
 
     private fun String.toPoints(): Set<Point> =
         split(Regex("\\s+")).mapNotNull { parseVertex(it) }.toSet()
+
+    private companion object {
+        const val TAG = "GnuGo"
+
+        /** Enough for an assertion, the board it happened on, and the SGF beneath it. */
+        const val DIAGNOSTIC_LINES = 200
+        const val DRAIN_GRACE_MS = 1000L
+        const val BUG_REPORT = "You stepped on a bug"
+        val SEED_IN_BUG_REPORT = Regex("\\(seed (\\d+)\\)")
+    }
 }
 
 private val Stone.gtp: String get() = if (this == Stone.BLACK) "black" else "white"

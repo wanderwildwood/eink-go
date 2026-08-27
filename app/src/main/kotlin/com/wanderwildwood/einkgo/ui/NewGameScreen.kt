@@ -70,7 +70,10 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                 label = "Opponent",
                 options = listOf(Opponent.COMPUTER, Opponent.HUMAN),
                 selected = opponent,
-                optionLabel = { if (it == Opponent.COMPUTER) "Computer" else "2 players" },
+                // Named, not "Computer". It is a particular engine with a particular
+                // way of playing, it is the reason this app can count a finished game,
+                // and its name is the honest answer to "what am I playing against?".
+                optionLabel = { if (it == Opponent.COMPUTER) "GNU Go" else "2 players" },
                 onSelect = { opponent = it },
             )
 

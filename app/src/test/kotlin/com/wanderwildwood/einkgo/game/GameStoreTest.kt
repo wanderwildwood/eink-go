@@ -30,25 +30,40 @@ class GameStoreTest {
         )
         val moves = listOf(Point(4, 4), Point(0, 8), null, Point(8, 0))
 
-        store.save(config, moves)
+        store.save(config, moves, seed = 4242)
         val loaded = store.load()
 
         assertEquals(config, loaded?.config)
         assertEquals(moves, loaded?.moves)
+        assertEquals(4242, loaded?.seed)
+    }
+
+    /**
+     * Seeds were added to the format without bumping its version, because a saved game
+     * from before them is still a good game - it just resumes on a new seed. Bumping
+     * would have thrown away a game in progress to gain nothing.
+     */
+    @Test
+    fun `a file written before seeds were recorded still loads`() {
+        val file = folder.newFile()
+        file.writeText("1\nCOMPUTER NORMAL BLACK 0\nE5\n")
+        val loaded = GameStore(file).load()
+        assertEquals(listOf(Point(4, 4)), loaded?.moves)
+        assertNull(loaded?.seed)
     }
 
     @Test
     fun `passes survive, including one as the very last move`() {
         val store = store()
         val moves = listOf(null, Point(4, 4), null)
-        store.save(GameConfig(), moves)
+        store.save(GameConfig(), moves, seed = 1)
         assertEquals(moves, store.load()?.moves)
     }
 
     @Test
     fun `a game with no moves yet is still a game`() {
         val store = store()
-        store.save(GameConfig(handicap = 2), emptyList())
+        store.save(GameConfig(handicap = 2), emptyList(), seed = 1)
         val loaded = store.load()
         assertEquals(emptyList<Point?>(), loaded?.moves)
         assertEquals(2, loaded?.config?.handicap)
@@ -58,7 +73,7 @@ class GameStoreTest {
     fun `clearing leaves nothing to come back to`() {
         val file = folder.newFile()
         val store = GameStore(file)
-        store.save(GameConfig(), listOf(Point(0, 0)))
+        store.save(GameConfig(), listOf(Point(0, 0)), seed = 1)
         store.clear()
         assertFalse(file.exists())
         assertNull(store.load())

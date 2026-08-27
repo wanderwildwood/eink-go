@@ -28,7 +28,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
         Spacer(Modifier.height(14.dp))
         TextMMD(
-            text = "A game of Go for the Kompakt. 9x9, against the computer or two people " +
+            text = "A game of Go for the Kompakt. 9x9, against GNU Go or two people " +
                 "sharing the phone. No permissions, no network, nothing leaves the device.",
             fontSize = 14.sp,
         )

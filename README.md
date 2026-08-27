@@ -1,7 +1,7 @@
 # eInk GO
 
 A game of Go for the [Mudita Kompakt](https://mudita.com/products/kompakt/), built for its
-E Ink screen. 9x9, against the computer or two people passing one phone back and forth.
+E Ink screen. 9x9, against GNU Go or two people passing one phone back and forth.
 
 Not a fork. Written from scratch in Kotlin and Jetpack Compose, using Mudita's own
 [MMD](https://github.com/mudita/MMD) design system so it looks like the apps the phone
@@ -13,7 +13,7 @@ already ships with, with GNU Go bundled as the engine.
 
 - **9x9 board.** Only. The engine handles any size and the board would scale, but 19x19 on
   a 360dp-wide panel gives 18dp touch targets, which is not a game anyone enjoys playing.
-- **Against the computer** at two strengths, playing either colour, or **two players** on
+- **Against GNU Go** at two strengths, playing either colour, or **two players** on
   one device, pass-and-play.
 - **Handicap of 2 to 5 stones.** This is the setting a Go app actually needs. No difficulty
   slider makes an engine a fair contest for a beginner; handicap exists precisely to do that.
@@ -21,7 +21,7 @@ already ships with, with GNU Go bundled as the engine.
   accept it or ignore it. Nothing is committed by asking.
 - **Tap to preview, tap again to place.** A stone is never played by a stray touch. The
   Place button does the same thing for anyone who would rather press a button.
-- **Take back a move** - and against the computer, its reply along with it. A finished
+- **Take back a move** - and against GNU Go, its reply along with it. A finished
   game can be taken back into, so a game lost to one careless move is still worth looking at.
 - **Proper scoring.** Two passes end the game and GNU Go scores it, including working out
   which stones are dead. Those are marked with a × on the board.

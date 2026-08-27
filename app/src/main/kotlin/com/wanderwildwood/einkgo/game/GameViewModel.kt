@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.random.Random
 
 /**
  * Owns the engine process and the game in front of it.
@@ -35,6 +36,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val moves = mutableListOf<Point?>()
 
     private var engine: GnuGo? = null
+
+    /**
+     * What the engine is playing this game with.
+     *
+     * Left to itself GNU Go seeds from the clock, so no game can ever be played twice -
+     * including the one that just crashed it. Choosing the seed here keeps every game
+     * different and makes any single one of them repeatable, which is the whole of a bug
+     * report for an engine that reports its own seed as it dies.
+     */
+    private var seed = newSeed()
     private var movesPlayed = 0
     private var consecutivePasses = 0
     private var firstToMove = Stone.BLACK
@@ -68,6 +79,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun restore() {
         val saved = store.load() ?: return
         val config = saved.config
+        seed = saved.seed ?: newSeed()
         movesPlayed = 0
         consecutivePasses = 0
         firstToMove = config.firstToMove
@@ -77,7 +89,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val fresh = GnuGo(binaryPath).apply {
-                    start(config.difficulty.level, config.komi, config.handicap)
+                    start(config.difficulty.level, config.komi, config.handicap, seed)
                 }
                 engine = fresh
                 for (move in saved.moves) {
@@ -110,12 +122,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun persist() {
         val config = _state.value?.config ?: return
-        store.save(config, moves.toList())
+        store.save(config, moves.toList(), seed)
     }
 
     fun newGame(config: GameConfig) {
         val previous = engine
         engine = null
+        seed = newSeed()
         movesPlayed = 0
         consecutivePasses = 0
         moveInFlight.set(false)
@@ -127,7 +140,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             previous?.close()
             try {
                 val fresh = GnuGo(binaryPath).apply {
-                    start(config.difficulty.level, config.komi, config.handicap)
+                    start(config.difficulty.level, config.komi, config.handicap, seed)
                 }
                 engine = fresh
                 val computerOpens = config.opponent == Opponent.COMPUTER &&
@@ -319,7 +332,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (consecutivePasses >= 2) {
                     finish(active)
                 } else {
-                    sync(active, Phase.PLAYING, message = "The computer passed")
+                    sync(active, Phase.PLAYING, message = "GNU Go passed")
                 }
             }
 
@@ -404,5 +417,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
          * permission to files named lib*.so inside jniLibs.
          */
         const val ENGINE_BINARY = "libgnugo.so"
+
+        /** Positive, because GNU Go prints its seed as a signed decimal and 0 means "pick one". */
+        fun newSeed(): Int = Random.nextInt(1, Int.MAX_VALUE)
     }
 }
