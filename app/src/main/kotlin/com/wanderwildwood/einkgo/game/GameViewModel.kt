@@ -29,6 +29,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val binaryPath =
         File(application.applicationInfo.nativeLibraryDir, ENGINE_BINARY).absolutePath
 
+    private val store = GameStore(File(application.filesDir, "game-in-progress.txt"))
+
+    /** Every move of the current game, a null being a pass. This is what gets saved. */
+    private val moves = mutableListOf<Point?>()
+
     private var engine: GnuGo? = null
     private var movesPlayed = 0
     private var consecutivePasses = 0
@@ -50,6 +55,64 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val toMove: Stone
         get() = if (movesPlayed % 2 == 0) firstToMove else firstToMove.other
 
+    init {
+        restore()
+    }
+
+    /**
+     * Rebuilds the game that was in progress when the app was last killed, by starting a
+     * fresh engine and replaying the moves into it. The engine works out the position, the
+     * captures, the ko and the move history that Undo needs - none of which has to be
+     * stored, because all of it follows from the moves.
+     */
+    private fun restore() {
+        val saved = store.load() ?: return
+        val config = saved.config
+        movesPlayed = 0
+        consecutivePasses = 0
+        firstToMove = config.firstToMove
+        moves.clear()
+        _state.value = GameState(config = config, phase = Phase.STARTING)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val fresh = GnuGo(binaryPath).apply {
+                    start(config.difficulty.level, config.komi, config.handicap)
+                }
+                engine = fresh
+                for (move in saved.moves) {
+                    fresh.play(toMove, move)
+                    movesPlayed++
+                    moves += move
+                }
+                consecutivePasses = saved.moves.reversed().takeWhile { it == null }.count()
+
+                val owedAMove = config.opponent == Opponent.COMPUTER &&
+                    toMove != config.humanColor
+                when {
+                    consecutivePasses >= 2 -> finish(fresh)
+                    // Killed while the engine was thinking: it still owes its reply.
+                    owedAMove -> {
+                        sync(fresh, Phase.THINKING)
+                        computerTurn(fresh)
+                    }
+
+                    else -> sync(fresh, Phase.PLAYING)
+                }
+            } catch (e: Exception) {
+                // A save that will not replay is worse than none: drop it rather than
+                // meet the player with the same failure every time they open the app.
+                store.clear()
+                broken(e)
+            }
+        }
+    }
+
+    private fun persist() {
+        val config = _state.value?.config ?: return
+        store.save(config, moves.toList())
+    }
+
     fun newGame(config: GameConfig) {
         val previous = engine
         engine = null
@@ -57,6 +120,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         consecutivePasses = 0
         moveInFlight.set(false)
         firstToMove = config.firstToMove
+        moves.clear()
         _state.value = GameState(config = config, phase = Phase.STARTING)
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -84,8 +148,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun endGame() {
         val previous = engine
         engine = null
+        moves.clear()
         _state.value = null
-        viewModelScope.launch(Dispatchers.IO) { previous?.close() }
+        viewModelScope.launch(Dispatchers.IO) {
+            store.clear()
+            previous?.close()
+        }
     }
 
     /**
@@ -112,6 +180,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 active.play(toMove, point)
                 movesPlayed++
+                moves += point
                 consecutivePasses = 0
                 continueAfterHumanMove(active, current.config)
             } catch (e: Exception) {
@@ -133,6 +202,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 active.play(toMove, null)
                 movesPlayed++
+                moves += null
                 consecutivePasses++
                 if (consecutivePasses >= 2) {
                     finish(active)
@@ -178,6 +248,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun resign() {
         val current = _state.value ?: return
         if (current.phase == Phase.BROKEN) return
+        viewModelScope.launch(Dispatchers.IO) { store.clear() }
         _state.update { current ->
             current ?: return@update null
             current.copy(
@@ -205,6 +276,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val steps = minOf(current.movesPerUndo, movesPlayed)
                 repeat(steps) { active.undo() }
+                repeat(steps) { moves.removeLastOrNull() }
                 movesPlayed -= steps
                 // Whether the passes that ended the game are still on the board is no
                 // longer knowable cheaply; zero is the safe answer, since its only cost
@@ -235,12 +307,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         when (val move = active.genMove(toMove)) {
             is EngineMove.Play -> {
                 movesPlayed++
+                moves += move.point
                 consecutivePasses = 0
                 sync(active, Phase.PLAYING)
             }
 
             EngineMove.Pass -> {
                 movesPlayed++
+                moves += null
                 consecutivePasses++
                 if (consecutivePasses >= 2) {
                     finish(active)
@@ -265,6 +339,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun finish(active: GnuGo) {
+        store.clear()
         val score = active.finalScore()
         val dead = active.deadStones()
         sync(active, Phase.FINISHED)
@@ -296,6 +371,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 message = message,
             )
         }
+
+        // Saving here rather than at each call site means no new way of ending a move can
+        // forget to do it. A finished or broken game is not saved - and finish() and
+        // resign() clear the file outright, so opening the app lands on a new game.
+        if (phase == Phase.PLAYING || phase == Phase.THINKING) persist()
     }
 
     private fun broken(cause: Exception) {
