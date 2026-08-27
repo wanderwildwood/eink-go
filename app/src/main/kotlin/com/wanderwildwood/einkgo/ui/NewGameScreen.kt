@@ -1,6 +1,7 @@
 package com.wanderwildwood.einkgo.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -48,12 +49,14 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
     var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
     var humanColor by remember { mutableStateOf(Stone.BLACK) }
     var handicap by remember { mutableStateOf(0) }
+    var aboutOpen by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBarMMD(
                 title = { TextMMD(text = "eInk GO", fontSize = 24.sp, fontWeight = FontWeight.Medium) },
+                actions = { InfoButton(onClick = { aboutOpen = true }) },
             )
         },
     ) { contentPadding ->
@@ -144,6 +147,35 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
             ) {
                 TextMMD(text = "PLAY", fontSize = 18.sp, fontWeight = FontWeight.Medium)
             }
+        }
+    }
+
+    if (aboutOpen) {
+        AboutDialog(onDismiss = { aboutOpen = false })
+    }
+}
+
+@Composable
+private fun InfoButton(onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(22.dp)) {
+            val stroke = 2.dp.toPx()
+            val radius = size.minDimension / 2f - stroke / 2f
+            val middle = Offset(size.width / 2f, size.height / 2f)
+            drawCircle(ink, radius = radius, center = middle, style = Stroke(stroke))
+            drawCircle(ink, radius = stroke * 0.7f, center = Offset(middle.x, size.height * 0.28f))
+            drawLine(
+                ink,
+                Offset(middle.x, size.height * 0.44f),
+                Offset(middle.x, size.height * 0.74f),
+                stroke,
+            )
         }
     }
 }

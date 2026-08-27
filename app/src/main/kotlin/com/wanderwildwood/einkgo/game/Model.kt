@@ -125,5 +125,10 @@ fun formatResult(score: String, resignedBy: Stone? = null): String {
         else -> return trimmed
     }
     val margin = trimmed.substringAfter('+', "").trim()
-    return if (margin.isEmpty()) "$winner wins" else "$winner wins by $margin"
+    return when {
+        margin.isEmpty() -> "$winner wins"
+        // Scores are normally a number, but "+R" is a resignation written as a score.
+        margin.equals("R", ignoreCase = true) -> "$winner wins by resignation"
+        else -> "$winner wins by $margin"
+    }
 }

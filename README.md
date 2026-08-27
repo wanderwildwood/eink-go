@@ -7,19 +7,43 @@ Not a fork. Written from scratch in Kotlin and Jetpack Compose, using Mudita's o
 [MMD](https://github.com/mudita/MMD) design system so it looks like the apps the phone
 already ships with, with GNU Go bundled as the engine.
 
+![The board](screenshots/3-hint.png)
+
 ## What it does
 
 - **9x9 board.** Only. The engine handles any size and the board would scale, but 19x19 on
   a 360dp-wide panel gives 18dp touch targets, which is not a game anyone enjoys playing.
-- **Against the computer**, at three strengths, playing either colour.
-- **Two players** on one device, pass-and-play.
+- **Against the computer** at two strengths, playing either colour, or **two players** on
+  one device, pass-and-play.
+- **Handicap of 2 to 5 stones.** This is the setting a Go app actually needs. No difficulty
+  slider makes an engine a fair contest for a beginner; handicap exists precisely to do that.
+- **Hint.** Asks the engine what it would play and offers it as a preview stone, so you can
+  accept it or ignore it. Nothing is committed by asking.
 - **Tap to preview, tap again to place.** A stone is never played by a stray touch. The
   Place button does the same thing for anyone who would rather press a button.
 - **Take back a move** - and against the computer, its reply along with it. A finished
   game can be taken back into, so a game lost to one careless move is still worth looking at.
 - **Proper scoring.** Two passes end the game and GNU Go scores it, including working out
   which stones are dead. Those are marked with a × on the board.
-- **No permissions, no network.** Nothing leaves the phone. The engine is a local binary.
+- **It keeps the game you were in the middle of.** Turn the phone off mid-game and it comes
+  back, undo history included.
+- **No permissions, no network.** Nothing leaves the phone, because there is no route off
+  it. See [PRIVACY.md](PRIVACY.md).
+
+## Why only two difficulty settings
+
+Because on a 9x9 board the engine only has two. Measured by self-play with colours
+alternating: levels 1 and 3 are indistinguishable (9-7 over 16 games), and so are levels 5
+and 10 (12-12 over 24 games, mean margin a tenth of a point). The only real step is between
+3 and 5 - and level 10 costs ten times the thinking time of level 5, 3.4s against 0.33s per
+move on the Kompakt, to play no better.
+
+GNU Go's Monte Carlo mode, which it offers for 9x9, genuinely is stronger - it beats classic
+level 10 seven games to one. But it takes 14 seconds a move on this phone, and its strength
+is the sheer number of simulations, so there is no cheap version of it: cut down to 1.3s a
+move it scores 26-28 against level 5, which is a coin.
+
+So the ladder stops where the engine does, and handicap is the dial for anything finer.
 
 ## The engine
 
@@ -40,9 +64,15 @@ takes two passes and what it does to the binary's name.
 Needs the Android SDK, and the NDK plus a host C compiler if you are rebuilding the engine.
 
 ```sh
-./engine/build-gnugo.sh     # only needed if lib/arm64-v8a/libgnugo.so is missing or stale
+./engine/build-gnugo.sh     # only needed if the bundled libgnugo.so is missing or stale
+./gradlew testDebugUnitTest
 ./gradlew assembleRelease
 ```
+
+Releases are built by `.github/workflows/release.yml` on a `v*` tag. It refuses to build
+without the signing secret, rebuilds the engine from the vendored tarball rather than
+trusting the committed binary, and checks the finished APK carries the expected signing
+certificate before publishing it.
 
 Release builds are signed with a keystore in `signing/`, which is gitignored. Without it
 the build falls back to the default debug key rather than to a checked-in one, because a

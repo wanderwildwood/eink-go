@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground.
+     The launcher masks this to a shape it chooses, and only the central 72 of these 108
+     units are guaranteed to survive - roughly 18 to 90. Everything here stays inside that,
+     which is why the board is a corner of four intersections rather than a whole grid:
+     at the size a launcher actually draws this, anything finer turns to mush. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- two lines each way, crossing at 40 and 68 -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="4"
+        android:pathData="M26,40 L82,40 M26,68 L82,68" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="4"
+        android:pathData="M40,26 L40,82 M68,26 L68,82" />
+
+    <!-- black stone on the upper left crossing -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M40,40m-17,0a17,17 0,1 1,34 0a17,17 0,1 1,-34 0" />
+
+    <!-- white stone on the lower right crossing -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="4.5"
+        android:pathData="M68,68m-17,0a17,17 0,1 1,34 0a17,17 0,1 1,-34 0" />
+</vector>
