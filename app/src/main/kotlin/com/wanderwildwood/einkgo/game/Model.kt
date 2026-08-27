@@ -33,6 +33,13 @@ enum class Opponent { COMPUTER, HUMAN }
  * costs ten times the thinking time of level 5 - 3.4s against 0.33s per move on the
  * Kompakt, in a middlegame - and plays no better for it.
  *
+ * A third, genuinely stronger setting was looked for and does not exist at a usable speed.
+ * GNU Go's Monte Carlo mode, which it provides for 9x9 and smaller, does beat classic
+ * level 10 (7-1 over 8 games, +6.2 points) - but it takes 14s a move on this phone, and
+ * its strength is in the sheer number of simulations. Cheapening it to `--monte-carlo
+ * --level 1`, at 1.3s a move, throws away the thing that made it strong: 26-28 over 54
+ * games against classic level 5, which is a coin. There is no fast version of it.
+ *
  * So the ladder stops at 5, and handicap is the dial for anything finer. That is the
  * Go-native answer anyway: handicap is how the game has always handled unequal players.
  */
