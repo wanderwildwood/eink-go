@@ -34,6 +34,7 @@ private fun EInkGo(viewModel: GameViewModel = viewModel()) {
             onTap = viewModel::tap,
             onConfirm = viewModel::confirmMove,
             onPass = viewModel::pass,
+            onHint = viewModel::hint,
             onUndo = viewModel::undo,
             onResign = viewModel::resign,
             onNewGame = viewModel::endGame,

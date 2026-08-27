@@ -19,9 +19,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * A null state means no game is in progress and the new-game screen is showing.
  *
- * Whose turn it is is never stored: black opens, every move alternates, and passes count
+ * Whose turn it is is never stored: one side opens, every move alternates, and passes count
  * as moves, so the side to move is always derivable from how many moves have been played.
- * That leaves one number to keep straight instead of two that can disagree.
+ * That leaves one number to keep straight instead of two that can disagree. Black opens
+ * unless there is a handicap, in which case its stones are already down and White opens.
  */
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -31,6 +32,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var engine: GnuGo? = null
     private var movesPlayed = 0
     private var consecutivePasses = 0
+    private var firstToMove = Stone.BLACK
 
     /**
      * Held for as long as a move is being played out.
@@ -45,7 +47,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow<GameState?>(null)
     val state: StateFlow<GameState?> = _state.asStateFlow()
 
-    private val toMove: Stone get() = if (movesPlayed % 2 == 0) Stone.BLACK else Stone.WHITE
+    private val toMove: Stone
+        get() = if (movesPlayed % 2 == 0) firstToMove else firstToMove.other
 
     fun newGame(config: GameConfig) {
         val previous = engine
@@ -53,15 +56,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         movesPlayed = 0
         consecutivePasses = 0
         moveInFlight.set(false)
+        firstToMove = config.firstToMove
         _state.value = GameState(config = config, phase = Phase.STARTING)
 
         viewModelScope.launch(Dispatchers.IO) {
             previous?.close()
             try {
-                val fresh = GnuGo(binaryPath).apply { start(config.difficulty.level, KOMI) }
+                val fresh = GnuGo(binaryPath).apply {
+                    start(config.difficulty.level, config.komi, config.handicap)
+                }
                 engine = fresh
                 val computerOpens = config.opponent == Opponent.COMPUTER &&
-                    config.humanColor == Stone.WHITE
+                    config.humanColor != config.firstToMove
                 if (computerOpens) {
                     sync(fresh, Phase.THINKING)
                     computerTurn(fresh)
@@ -141,6 +147,34 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Asks the engine what it would play and drops that into the preview slot, so a hint
+     * is accepted by pressing Place and refused by tapping anywhere else. Nothing is
+     * committed on the engine's board by asking.
+     */
+    fun hint() {
+        val current = _state.value ?: return
+        val active = engine ?: return
+        if (current.phase != Phase.PLAYING || !current.isHumanTurn) return
+
+        if (!moveInFlight.compareAndSet(false, true)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val suggestion = active.suggest(toMove)
+                _state.update {
+                    it?.copy(
+                        preview = suggestion,
+                        message = if (suggestion == null) "Nothing worth suggesting" else null,
+                    )
+                }
+            } catch (e: Exception) {
+                broken(e)
+            } finally {
+                moveInFlight.set(false)
+            }
+        }
+    }
+
     fun resign() {
         val current = _state.value ?: return
         if (current.phase == Phase.BROKEN) return
@@ -151,6 +185,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 preview = null,
                 legal = emptySet(),
                 result = formatResult(score = "", resignedBy = current.toMove),
+                wasScored = false,
             )
         }
     }
@@ -175,7 +210,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 // longer knowable cheaply; zero is the safe answer, since its only cost
                 // is that a game being closed out needs its two passes played again.
                 consecutivePasses = 0
-                _state.update { it?.copy(result = null, dead = emptySet(), message = null) }
+                _state.update { it?.copy(result = null, dead = emptySet(), wasScored = false, message = null) }
                 sync(active, Phase.PLAYING)
             } catch (e: Exception) {
                 broken(e)
@@ -222,6 +257,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                         preview = null,
                         legal = emptySet(),
                         result = formatResult(score = "", resignedBy = toMove),
+                        wasScored = false,
                     )
                 }
             }

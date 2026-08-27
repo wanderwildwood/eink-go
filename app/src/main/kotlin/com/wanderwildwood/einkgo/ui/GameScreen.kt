@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.ButtonMMD
@@ -45,6 +45,7 @@ fun GameScreen(
     onTap: (Point) -> Unit,
     onConfirm: () -> Unit,
     onPass: () -> Unit,
+    onHint: () -> Unit,
     onUndo: () -> Unit,
     onResign: () -> Unit,
     onNewGame: () -> Unit,
@@ -59,9 +60,14 @@ fun GameScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
+            // Everything that is not the board lives up here now: whose turn it is, what
+            // each side has captured, and the way out. The board gets the rest.
             TopAppBarMMD(
                 title = { StatusTitle(state) },
-                actions = { MenuButton(onClick = { menuOpen = true }) },
+                actions = {
+                    Captures(state)
+                    MenuButton(onClick = { menuOpen = true })
+                },
             )
         },
     ) { contentPadding ->
@@ -77,27 +83,14 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-            )
-
-            Captures(state)
-
-            // Fixed height: a line that appears and disappears would shove the board up
-            // and down the screen, and every one of those shoves is a full E Ink repaint.
-            TextMMD(
-                text = state.message.orEmpty(),
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(18.dp)
-                    .padding(top = 2.dp),
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
             )
 
             BottomBar(
                 state = state,
                 onUndo = onUndo,
                 onPass = onPass,
+                onHint = onHint,
                 onConfirm = onConfirm,
             )
         }
@@ -123,15 +116,24 @@ fun GameScreen(
         EInkDialog(onDismiss = { resultDismissed = true }) {
             TextMMD(text = result, fontSize = 20.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(8.dp))
-            TextMMD(
-                text = if (state.dead.isEmpty()) {
-                    "Scored with komi 6.5."
-                } else {
-                    "Scored with komi 6.5. Stones marked × were counted as dead."
-                },
-                fontSize = 15.sp,
-            )
-            Spacer(Modifier.height(18.dp))
+            if (state.wasScored) {
+                TextMMD(
+                    text = buildString {
+                        append("Scored with komi ${state.config.komi}")
+                        if (state.config.handicap >= 2) {
+                            append(" and ${state.config.handicap} handicap stones")
+                        }
+                        append(".")
+                        if (state.dead.isNotEmpty()) {
+                            append(" Stones marked × were counted as dead.")
+                        }
+                    },
+                    fontSize = 15.sp,
+                )
+                Spacer(Modifier.height(18.dp))
+            } else {
+                Spacer(Modifier.height(14.dp))
+            }
             ButtonMMD(
                 onClick = onNewGame,
                 modifier = Modifier
@@ -149,7 +151,14 @@ fun GameScreen(
     }
 }
 
-/** Whose turn it is, said with a stone rather than only with the word for its colour. */
+/**
+ * Whose turn it is, and what is happening.
+ *
+ * The stone says which colour; the words say something the stone cannot. Writing "Black
+ * to play" beside a black stone would be saying the same thing twice and taking the room
+ * to do it. A passing message takes the same slot - it is always about the turn that has
+ * just changed hands, so it never competes with the status for meaning.
+ */
 @Composable
 private fun StatusTitle(state: GameState) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -158,30 +167,28 @@ private fun StatusTitle(state: GameState) {
             else -> null
         }
         if (turnStone != null) {
-            StoneGlyph(stone = turnStone, size = 16.dp)
+            StoneGlyph(stone = turnStone, size = 17.dp)
             Spacer(Modifier.width(10.dp))
         }
         TextMMD(
-            text = state.statusText(),
-            fontSize = 19.sp,
+            text = state.message ?: state.statusText(),
+            fontSize = 18.sp,
             fontWeight = FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }
 
 /** Prisoners held by each side. */
 @Composable
-private fun Captures(state: GameState) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 6.dp),
-    ) {
-        StoneGlyph(stone = Stone.BLACK)
-        Spacer(Modifier.width(6.dp))
+private fun RowScope.Captures(state: GameState) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        StoneGlyph(stone = Stone.BLACK, size = 12.dp)
+        Spacer(Modifier.width(5.dp))
         TextMMD(text = "${state.blackCaptures}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.width(28.dp))
-        StoneGlyph(stone = Stone.WHITE)
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(12.dp))
+        StoneGlyph(stone = Stone.WHITE, size = 12.dp)
+        Spacer(Modifier.width(5.dp))
         TextMMD(text = "${state.whiteCaptures}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
@@ -206,7 +213,7 @@ private fun MenuButton(onClick: () -> Unit) {
 }
 
 /**
- * Undo, Pass, Place - always all three, in the same places.
+ * Undo, Pass, Hint, Place - always all four, in the same places.
  *
  * Place is styled rather than hidden when there is nothing to place. A button that comes
  * and goes reflows the row underneath the board on every single move, and on E Ink that
@@ -217,52 +224,68 @@ private fun BottomBar(
     state: GameState,
     onUndo: () -> Unit,
     onPass: () -> Unit,
+    onHint: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     val canAct = state.phase == Phase.PLAYING && state.isHumanTurn
-    val hasPreview = state.preview != null
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         OutlinedButtonMMD(
             onClick = onUndo,
             enabled = state.canUndo,
+            contentPadding = TIGHT,
             modifier = Modifier
                 .weight(1f)
                 .height(48.dp),
-        ) { TextMMD(text = "Undo", fontSize = 15.sp) }
+        ) { TextMMD(text = "Undo", fontSize = 14.sp, maxLines = 1) }
 
         OutlinedButtonMMD(
             onClick = onPass,
             enabled = canAct,
+            contentPadding = TIGHT,
             modifier = Modifier
                 .weight(1f)
                 .height(48.dp),
-        ) { TextMMD(text = "Pass", fontSize = 15.sp) }
+        ) { TextMMD(text = "Pass", fontSize = 14.sp, maxLines = 1) }
 
-        if (hasPreview) {
+        OutlinedButtonMMD(
+            onClick = onHint,
+            enabled = canAct,
+            contentPadding = TIGHT,
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+        ) { TextMMD(text = "Hint", fontSize = 14.sp, maxLines = 1) }
+
+        if (state.preview != null) {
             ButtonMMD(
                 onClick = onConfirm,
+                contentPadding = TIGHT,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
-            ) { TextMMD(text = "Place", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
+            ) { TextMMD(text = "Place", fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
         } else {
             OutlinedButtonMMD(
                 onClick = {},
                 enabled = false,
+                contentPadding = TIGHT,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
-            ) { TextMMD(text = "Place", fontSize = 15.sp) }
+            ) { TextMMD(text = "Place", fontSize = 14.sp, maxLines = 1) }
         }
     }
 }
+
+/** Four buttons across 360dp cannot afford the default 16dp of padding each side. */
+private val TIGHT = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 8.dp)
 
 @Composable
 private fun MenuDialog(
@@ -303,5 +326,5 @@ private fun GameState.statusText(): String = when (phase) {
     Phase.THINKING -> "Thinking…"
     Phase.BROKEN -> "Engine stopped"
     Phase.FINISHED -> result ?: "Game over"
-    Phase.PLAYING -> if (toMove == Stone.BLACK) "Black to play" else "White to play"
+    Phase.PLAYING -> "Your move"
 }

@@ -16,13 +16,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.einkgo.game.BOARD_SIZE
 import com.wanderwildwood.einkgo.game.GameState
 import com.wanderwildwood.einkgo.game.Point
@@ -34,11 +28,12 @@ private val STAR_POINTS = setOf(
     Point(2, 2), Point(6, 2), Point(4, 4), Point(2, 6), Point(6, 6),
 )
 
-/** GTP column letters skip I, so a column is never mistaken for the digit 1. */
-private const val COLUMN_LETTERS = "ABCDEFGHJ"
-
 /**
  * The board.
+ *
+ * No coordinates. On a nine-line board every point is within four lines of an edge and
+ * the star points already say where you are, so labels were costing width and attention
+ * to name an axis nobody was reading.
  *
  * Everything is drawn at full black or full white with hard edges. E Ink has no useful
  * greys at this size and dithering a stone only makes it look like a smudge, so a white
@@ -52,30 +47,22 @@ fun Goban(
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
     val paper = MaterialTheme.colorScheme.surface
-    val measurer = rememberTextMeasurer()
-
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxHeight)
         val density = LocalDensity.current
         val sidePx = with(density) { side.toPx() }
 
-        // Room down the left and along the bottom for the coordinates, and a little
-        // clearance all round so that stones on the edge line - which stick out past it
-        // by their own radius - are not clipped or crowded against the screen edge.
-        val gutter = sidePx * 0.055f
-        val edgePad = sidePx * 0.02f
-        val cell = (sidePx - gutter - 2 * edgePad) / BOARD_SIZE
-        val originX = gutter + edgePad + cell / 2f
+        // Just enough clearance that stones on the edge line - which stick out past it by
+        // their own radius - are not clipped.
+        val edgePad = sidePx * 0.006f
+        val cell = (sidePx - 2 * edgePad) / BOARD_SIZE
+        val originX = edgePad + cell / 2f
         val originY = edgePad + cell / 2f
 
         val lineWidth = with(density) { 1.dp.toPx() }
         val borderWidth = with(density) { 2.dp.toPx() }
-        val stoneRadius = cell * 0.46f
-        val labelStyle = TextStyle(
-            fontSize = with(density) { (cell * 0.30f).toSp() },
-            fontWeight = FontWeight.Medium,
-            color = ink,
-        )
+        val stoneRadius = cell * 0.44f
+        val seamWidth = with(density) { 1.5.dp.toPx() }
 
         fun center(point: Point) =
             Offset(originX + point.col * cell, originY + point.row * cell)
@@ -114,13 +101,12 @@ fun Goban(
                 drawCircle(ink, radius = cell * 0.075f, center = center(star))
             }
 
-            drawCoordinates(measurer, labelStyle, originX, originY, cell, span, stoneRadius)
 
             for (point in state.black) {
-                drawStone(center(point), stoneRadius, Stone.BLACK, ink, paper, borderWidth)
+                drawStone(center(point), stoneRadius, Stone.BLACK, ink, paper, borderWidth, seamWidth)
             }
             for (point in state.white) {
-                drawStone(center(point), stoneRadius, Stone.WHITE, ink, paper, borderWidth)
+                drawStone(center(point), stoneRadius, Stone.WHITE, ink, paper, borderWidth, seamWidth)
             }
 
             // A quiet dot on the stone just played, so a board you looked away from can
@@ -148,7 +134,7 @@ fun Goban(
             // which reads as "here, not yet" without needing a legend.
             state.preview?.let { preview ->
                 val at = center(preview)
-                drawStone(at, stoneRadius * 0.62f, state.toMove, ink, paper, borderWidth)
+                drawStone(at, stoneRadius * 0.62f, state.toMove, ink, paper, borderWidth, seamWidth)
                 drawCircle(
                     color = ink,
                     radius = stoneRadius,
@@ -165,39 +151,6 @@ fun Goban(
     }
 }
 
-/** Letters along the bottom, numbers down the left, the way a goban is labelled. */
-private fun DrawScope.drawCoordinates(
-    measurer: TextMeasurer,
-    style: TextStyle,
-    originX: Float,
-    originY: Float,
-    cell: Float,
-    span: Float,
-    stoneRadius: Float,
-) {
-    val below = originY + span + stoneRadius + cell * 0.16f
-    for (col in 0 until BOARD_SIZE) {
-        val label = measurer.measure(COLUMN_LETTERS[col].toString(), style)
-        drawText(
-            textLayoutResult = label,
-            topLeft = Offset(originX + col * cell - label.size.width / 2f, below),
-        )
-    }
-
-    val leftOf = originX - stoneRadius - cell * 0.16f
-    for (row in 0 until BOARD_SIZE) {
-        // Row 1 is at the bottom of the board, as it is written in every game record.
-        val label = measurer.measure((BOARD_SIZE - row).toString(), style)
-        drawText(
-            textLayoutResult = label,
-            topLeft = Offset(
-                leftOf - label.size.width,
-                originY + row * cell - label.size.height / 2f,
-            ),
-        )
-    }
-}
-
 private fun DrawScope.drawStone(
     center: Offset,
     radius: Float,
@@ -205,9 +158,15 @@ private fun DrawScope.drawStone(
     ink: Color,
     paper: Color,
     rimWidth: Float,
+    seamWidth: Float,
 ) {
     if (stone == Stone.BLACK) {
         drawCircle(ink, radius = radius, center = center)
+        // A paper-coloured seam around every black stone. On a real board two touching
+        // black stones are still two objects because they are round and catch the light;
+        // drawn flat in one colour they merge into a blob you cannot count. This is what
+        // keeps a black chain readable as stones.
+        drawCircle(paper, radius = radius, center = center, style = Stroke(seamWidth))
     } else {
         drawCircle(paper, radius = radius, center = center)
         drawCircle(ink, radius = radius, center = center, style = Stroke(rimWidth))

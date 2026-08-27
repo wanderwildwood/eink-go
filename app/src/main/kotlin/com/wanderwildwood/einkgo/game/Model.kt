@@ -9,6 +9,9 @@ const val BOARD_SIZE = 9
 /** Komi is fixed. One fewer thing to explain, and 6.5 is the usual modern 9x9 value. */
 const val KOMI = 6.5
 
+/** A handicap game keeps only the half point that stops a draw. */
+const val HANDICAP_KOMI = 0.5
+
 enum class Stone {
     BLACK,
     WHITE;
@@ -31,7 +34,15 @@ data class GameConfig(
     val opponent: Opponent = Opponent.COMPUTER,
     val difficulty: Difficulty = Difficulty.MEDIUM,
     val humanColor: Stone = Stone.BLACK,
-)
+    /** Free stones for Black before play starts. 0, or 2 upwards - a handicap of 1 means nothing. */
+    val handicap: Int = 0,
+) {
+    /** The handicap stones are Black's, so in a handicap game White opens. */
+    val firstToMove: Stone get() = if (handicap >= 2) Stone.WHITE else Stone.BLACK
+
+    /** In a handicap game the stones are the compensation, so komi all but disappears. */
+    val komi: Double get() = if (handicap >= 2) HANDICAP_KOMI else KOMI
+}
 
 enum class Phase {
     /** Waiting on the engine to start up. */
@@ -61,6 +72,8 @@ data class GameState(
     val preview: Point? = null,
     val dead: Set<Point> = emptySet(),
     val result: String? = null,
+    /** True only when the game ended in two passes and the engine counted it. */
+    val wasScored: Boolean = false,
     val movesPlayed: Int = 0,
     /** Shown once under the board: a passed turn, a refused move, an engine failure. */
     val message: String? = null,

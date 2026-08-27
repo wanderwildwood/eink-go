@@ -47,6 +47,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
     var opponent by remember { mutableStateOf(Opponent.COMPUTER) }
     var difficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
     var humanColor by remember { mutableStateOf(Stone.BLACK) }
+    var handicap by remember { mutableStateOf(0) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -88,9 +89,25 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                     optionLabel = { if (it == Stone.BLACK) "Black" else "White" },
                     onSelect = { humanColor = it },
                 )
-                Spacer(Modifier.height(10.dp))
-                TextMMD(text = "Black plays first.", fontSize = 13.sp)
             }
+
+            Spacer(Modifier.height(22.dp))
+            ChoiceRow(
+                label = "Handicap",
+                options = listOf(0, 2, 3, 4, 5),
+                selected = handicap,
+                optionLabel = { "$it" },
+                onSelect = { handicap = it },
+            )
+            Spacer(Modifier.height(10.dp))
+            TextMMD(
+                text = if (handicap == 0) {
+                    "Black plays first."
+                } else {
+                    "Black starts with $handicap stones on the board, and White plays first."
+                },
+                fontSize = 13.sp,
+            )
 
             // The empty middle of this screen was doing nothing; a corner of a board fills
             // it and says what the app is without a word of explanation. It takes whatever
@@ -117,6 +134,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                             opponent = opponent,
                             difficulty = difficulty,
                             humanColor = humanColor,
+                            handicap = handicap,
                         )
                     )
                 },
@@ -184,7 +202,7 @@ private fun <T> ChoiceRow(
             for (option in options) {
                 val isSelected = option == selected
                 val content: @Composable () -> Unit = {
-                    TextMMD(text = optionLabel(option), fontSize = 15.sp)
+                    TextMMD(text = optionLabel(option), fontSize = 15.sp, maxLines = 1)
                 }
                 if (isSelected) {
                     ButtonMMD(

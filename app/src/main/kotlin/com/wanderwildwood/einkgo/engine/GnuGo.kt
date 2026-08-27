@@ -29,7 +29,7 @@ class GnuGo(private val binaryPath: String) {
     private var reader: BufferedReader? = null
     private var writer: BufferedWriter? = null
 
-    fun start(level: Int, komi: Double) {
+    fun start(level: Int, komi: Double, handicap: Int) {
         val started = ProcessBuilder(binaryPath, "--mode", "gtp").start()
         process = started
         reader = started.inputStream.bufferedReader()
@@ -49,6 +49,8 @@ class GnuGo(private val binaryPath: String) {
         send("clear_board")
         send("komi $komi")
         send("level $level")
+        // Places the stones on the star points and leaves White to open.
+        if (handicap >= 2) send("fixed_handicap $handicap")
     }
 
     /**
@@ -105,6 +107,16 @@ class GnuGo(private val binaryPath: String) {
     fun undo() {
         send("undo")
     }
+
+    /**
+     * The move the engine would play, without playing it.
+     *
+     * `reg_genmove` is genmove with the side effect removed, which is exactly what a hint
+     * wants: the suggestion can be dropped straight into the preview slot and either
+     * accepted or overruled by tapping somewhere else.
+     */
+    fun suggest(color: Stone): Point? =
+        parseVertex(send("reg_genmove ${color.gtp}"))
 
     fun stones(color: Stone): Set<Point> = send("list_stones ${color.gtp}").toPoints()
 
