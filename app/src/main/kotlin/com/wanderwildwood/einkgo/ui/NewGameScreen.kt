@@ -1,6 +1,9 @@
 package com.wanderwildwood.einkgo.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -16,7 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,7 +60,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             ChoiceRow(
                 label = "Opponent",
@@ -64,7 +71,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
             )
 
             if (opponent == Opponent.COMPUTER) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(22.dp))
                 ChoiceRow(
                     label = "Difficulty",
                     options = Difficulty.entries.toList(),
@@ -73,7 +80,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                     onSelect = { difficulty = it },
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(22.dp))
                 ChoiceRow(
                     label = "Your stones",
                     options = listOf(Stone.BLACK, Stone.WHITE),
@@ -81,14 +88,27 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                     optionLabel = { if (it == Stone.BLACK) "Black" else "White" },
                     onSelect = { humanColor = it },
                 )
-                Spacer(Modifier.height(8.dp))
-                TextMMD(
-                    text = "Black plays first.",
-                    fontSize = 14.sp,
-                )
+                Spacer(Modifier.height(10.dp))
+                TextMMD(text = "Black plays first.", fontSize = 13.sp)
             }
 
-            Spacer(Modifier.weight(1f))
+            // The empty middle of this screen was doing nothing; a corner of a board fills
+            // it and says what the app is without a word of explanation. It takes whatever
+            // room is going spare - which is most of the screen once two players is picked
+            // and the computer settings go away - and bows out entirely when there is none,
+            // rather than being wedged in at a size that looks like a mistake.
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                val available = minOf(maxWidth, maxHeight)
+                if (available >= 88.dp) {
+                    GobanMark(size = minOf(available, 200.dp))
+                }
+            }
 
             ButtonMMD(
                 onClick = {
@@ -102,10 +122,44 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(54.dp),
             ) {
                 TextMMD(text = "PLAY", fontSize = 18.sp, fontWeight = FontWeight.Medium)
             }
+        }
+    }
+}
+
+/** A small square of goban with four stones on it, drawn the same way the real board is. */
+@Composable
+private fun GobanMark(size: androidx.compose.ui.unit.Dp = 132.dp) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    val paper = MaterialTheme.colorScheme.surface
+    val lines = 5
+
+    Canvas(modifier = Modifier.size(size)) {
+        val cell = this.size.minDimension / lines
+        val origin = cell / 2f
+        val span = (lines - 1) * cell
+        val hairline = 1.dp.toPx()
+        val rim = 2.dp.toPx()
+        val radius = cell * 0.46f
+
+        for (i in 0 until lines) {
+            val at = origin + i * cell
+            drawLine(ink, Offset(origin, at), Offset(origin + span, at), hairline)
+            drawLine(ink, Offset(at, origin), Offset(at, origin + span), hairline)
+        }
+        drawCircle(ink, radius = cell * 0.08f, center = Offset(origin + 2 * cell, origin + 2 * cell))
+
+        fun at(col: Int, row: Int) = Offset(origin + col * cell, origin + row * cell)
+
+        // A quiet, symmetric arrangement - it is a mark, not a position worth reading.
+        drawCircle(ink, radius = radius, center = at(1, 1))
+        drawCircle(ink, radius = radius, center = at(3, 3))
+        for (point in listOf(at(3, 1), at(1, 3))) {
+            drawCircle(paper, radius = radius, center = point)
+            drawCircle(ink, radius = radius, center = point, style = Stroke(rim))
         }
     }
 }
@@ -125,8 +179,8 @@ private fun <T> ChoiceRow(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         TextMMD(text = label, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (option in options) {
                 val isSelected = option == selected
                 val content: @Composable () -> Unit = {
@@ -137,14 +191,14 @@ private fun <T> ChoiceRow(
                         onClick = { onSelect(option) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
+                            .height(50.dp),
                     ) { content() }
                 } else {
                     OutlinedButtonMMD(
                         onClick = { onSelect(option) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
+                            .height(50.dp),
                     ) { content() }
                 }
             }

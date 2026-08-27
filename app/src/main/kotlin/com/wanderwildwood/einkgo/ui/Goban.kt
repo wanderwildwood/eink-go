@@ -16,7 +16,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.wanderwildwood.einkgo.game.BOARD_SIZE
 import com.wanderwildwood.einkgo.game.GameState
 import com.wanderwildwood.einkgo.game.Point
@@ -27,6 +33,9 @@ import kotlin.math.roundToInt
 private val STAR_POINTS = setOf(
     Point(2, 2), Point(6, 2), Point(4, 4), Point(2, 6), Point(6, 6),
 )
+
+/** GTP column letters skip I, so a column is never mistaken for the digit 1. */
+private const val COLUMN_LETTERS = "ABCDEFGHJ"
 
 /**
  * The board.
@@ -43,32 +52,41 @@ fun Goban(
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
     val paper = MaterialTheme.colorScheme.surface
+    val measurer = rememberTextMeasurer()
 
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxHeight)
         val density = LocalDensity.current
         val sidePx = with(density) { side.toPx() }
 
-        // A stone on the edge line sticks out past it by its own radius, so the grid is
-        // inset rather than run to the canvas edge - otherwise corner stones are clipped
-        // and the board looks like it is falling off the screen.
-        val inset = sidePx * 0.035f
-        val cell = (sidePx - 2 * inset) / BOARD_SIZE
-        val origin = inset + cell / 2f
+        // Room down the left and along the bottom for the coordinates, and a little
+        // clearance all round so that stones on the edge line - which stick out past it
+        // by their own radius - are not clipped or crowded against the screen edge.
+        val gutter = sidePx * 0.055f
+        val edgePad = sidePx * 0.02f
+        val cell = (sidePx - gutter - 2 * edgePad) / BOARD_SIZE
+        val originX = gutter + edgePad + cell / 2f
+        val originY = edgePad + cell / 2f
+
         val lineWidth = with(density) { 1.dp.toPx() }
         val borderWidth = with(density) { 2.dp.toPx() }
         val stoneRadius = cell * 0.46f
+        val labelStyle = TextStyle(
+            fontSize = with(density) { (cell * 0.30f).toSp() },
+            fontWeight = FontWeight.Medium,
+            color = ink,
+        )
 
         fun center(point: Point) =
-            Offset(origin + point.col * cell, origin + point.row * cell)
+            Offset(originX + point.col * cell, originY + point.row * cell)
 
         Canvas(
             modifier = Modifier
                 .size(side)
-                .pointerInput(cell) {
+                .pointerInput(cell, originX, originY) {
                     detectTapGestures { offset ->
-                        val col = ((offset.x - origin) / cell).roundToInt()
-                        val row = ((offset.y - origin) / cell).roundToInt()
+                        val col = ((offset.x - originX) / cell).roundToInt()
+                        val row = ((offset.y - originY) / cell).roundToInt()
                         if (col in 0 until BOARD_SIZE && row in 0 until BOARD_SIZE) {
                             onTap(Point(col, row))
                         }
@@ -78,20 +96,25 @@ fun Goban(
             val span = (BOARD_SIZE - 1) * cell
 
             for (i in 0 until BOARD_SIZE) {
-                val at = origin + i * cell
-                drawLine(ink, Offset(origin, at), Offset(origin + span, at), lineWidth)
-                drawLine(ink, Offset(at, origin), Offset(at, origin + span), lineWidth)
+                val at = originX + i * cell
+                val down = originY + i * cell
+                drawLine(ink, Offset(originX, down), Offset(originX + span, down), lineWidth)
+                drawLine(ink, Offset(at, originY), Offset(at, originY + span), lineWidth)
             }
+
+            // A real goban's outer line is heavier than the ones inside it.
             drawRect(
                 color = ink,
-                topLeft = Offset(origin, origin),
+                topLeft = Offset(originX, originY),
                 size = Size(span, span),
                 style = Stroke(borderWidth),
             )
 
             for (star in STAR_POINTS) {
-                drawCircle(ink, radius = cell * 0.07f, center = center(star))
+                drawCircle(ink, radius = cell * 0.075f, center = center(star))
             }
+
+            drawCoordinates(measurer, labelStyle, originX, originY, cell, span, stoneRadius)
 
             for (point in state.black) {
                 drawStone(center(point), stoneRadius, Stone.BLACK, ink, paper, borderWidth)
@@ -104,9 +127,8 @@ fun Goban(
             // still tell you where the last move landed.
             state.lastMove?.let { last ->
                 if (last in state.black || last in state.white) {
-                    val onBlack = last in state.black
                     drawCircle(
-                        color = if (onBlack) paper else ink,
+                        color = if (last in state.black) paper else ink,
                         radius = cell * 0.13f,
                         center = center(last),
                     )
@@ -115,8 +137,7 @@ fun Goban(
 
             // Stones the engine judged dead when the game was scored.
             for (point in state.dead) {
-                val onBlack = point in state.black
-                val mark = if (onBlack) paper else ink
+                val mark = if (point in state.black) paper else ink
                 val at = center(point)
                 val arm = stoneRadius * 0.55f
                 drawLine(mark, Offset(at.x - arm, at.y - arm), Offset(at.x + arm, at.y + arm), borderWidth)
@@ -141,6 +162,39 @@ fun Goban(
                 )
             }
         }
+    }
+}
+
+/** Letters along the bottom, numbers down the left, the way a goban is labelled. */
+private fun DrawScope.drawCoordinates(
+    measurer: TextMeasurer,
+    style: TextStyle,
+    originX: Float,
+    originY: Float,
+    cell: Float,
+    span: Float,
+    stoneRadius: Float,
+) {
+    val below = originY + span + stoneRadius + cell * 0.16f
+    for (col in 0 until BOARD_SIZE) {
+        val label = measurer.measure(COLUMN_LETTERS[col].toString(), style)
+        drawText(
+            textLayoutResult = label,
+            topLeft = Offset(originX + col * cell - label.size.width / 2f, below),
+        )
+    }
+
+    val leftOf = originX - stoneRadius - cell * 0.16f
+    for (row in 0 until BOARD_SIZE) {
+        // Row 1 is at the bottom of the board, as it is written in every game record.
+        val label = measurer.measure((BOARD_SIZE - row).toString(), style)
+        drawText(
+            textLayoutResult = label,
+            topLeft = Offset(
+                leftOf - label.size.width,
+                originY + row * cell - label.size.height / 2f,
+            ),
+        )
     }
 }
 

@@ -1,7 +1,10 @@
 package com.wanderwildwood.einkgo.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,13 +60,8 @@ fun GameScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBarMMD(
-                title = {
-                    TextMMD(
-                        text = state.statusText(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                },
+                title = { StatusTitle(state) },
+                actions = { MenuButton(onClick = { menuOpen = true }) },
             )
         },
     ) { contentPadding ->
@@ -70,33 +71,31 @@ fun GameScreen(
                 .padding(contentPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TextMMD(
-                text = "Black ${state.blackCaptures}   ·   White ${state.whiteCaptures}",
-                fontSize = 14.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
-            )
-
             Goban(
                 state = state,
                 onTap = onTap,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 6.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
             )
 
+            Captures(state)
+
+            // Fixed height: a line that appears and disappears would shove the board up
+            // and down the screen, and every one of those shoves is a full E Ink repaint.
             TextMMD(
                 text = state.message.orEmpty(),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp),
+                    .height(18.dp)
+                    .padding(top = 2.dp),
             )
 
             BottomBar(
                 state = state,
-                onMenu = { menuOpen = true },
                 onUndo = onUndo,
                 onPass = onPass,
                 onConfirm = onConfirm,
@@ -150,53 +149,117 @@ fun GameScreen(
     }
 }
 
+/** Whose turn it is, said with a stone rather than only with the word for its colour. */
+@Composable
+private fun StatusTitle(state: GameState) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        val turnStone = when (state.phase) {
+            Phase.PLAYING, Phase.THINKING -> state.toMove
+            else -> null
+        }
+        if (turnStone != null) {
+            StoneGlyph(stone = turnStone, size = 16.dp)
+            Spacer(Modifier.width(10.dp))
+        }
+        TextMMD(
+            text = state.statusText(),
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+/** Prisoners held by each side. */
+@Composable
+private fun Captures(state: GameState) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 6.dp),
+    ) {
+        StoneGlyph(stone = Stone.BLACK)
+        Spacer(Modifier.width(6.dp))
+        TextMMD(text = "${state.blackCaptures}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.width(28.dp))
+        StoneGlyph(stone = Stone.WHITE)
+        Spacer(Modifier.width(6.dp))
+        TextMMD(text = "${state.whiteCaptures}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun MenuButton(onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(20.dp)) {
+            val stroke = 2.dp.toPx()
+            for (i in 0..2) {
+                val y = size.height * (0.18f + 0.32f * i)
+                drawLine(ink, Offset(0f, y), Offset(size.width, y), stroke)
+            }
+        }
+    }
+}
+
+/**
+ * Undo, Pass, Place - always all three, in the same places.
+ *
+ * Place is styled rather than hidden when there is nothing to place. A button that comes
+ * and goes reflows the row underneath the board on every single move, and on E Ink that
+ * is a visible flash for no information gained.
+ */
 @Composable
 private fun BottomBar(
     state: GameState,
-    onMenu: () -> Unit,
     onUndo: () -> Unit,
     onPass: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     val canAct = state.phase == Phase.PLAYING && state.isHumanTurn
+    val hasPreview = state.preview != null
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedButtonMMD(
-            onClick = onMenu,
-            modifier = Modifier
-                .weight(1f)
-                .height(46.dp),
-        ) { TextMMD(text = "MENU", fontSize = 14.sp) }
-
         OutlinedButtonMMD(
             onClick = onUndo,
             enabled = state.canUndo,
             modifier = Modifier
                 .weight(1f)
-                .height(46.dp),
-        ) { TextMMD(text = "UNDO", fontSize = 14.sp) }
+                .height(48.dp),
+        ) { TextMMD(text = "Undo", fontSize = 15.sp) }
 
         OutlinedButtonMMD(
             onClick = onPass,
             enabled = canAct,
             modifier = Modifier
                 .weight(1f)
-                .height(46.dp),
-        ) { TextMMD(text = "PASS", fontSize = 14.sp) }
+                .height(48.dp),
+        ) { TextMMD(text = "Pass", fontSize = 15.sp) }
 
-        if (state.preview != null) {
+        if (hasPreview) {
             ButtonMMD(
                 onClick = onConfirm,
                 modifier = Modifier
-                    .weight(1.2f)
-                    .height(46.dp),
-            ) { TextMMD(text = "PLACE", fontSize = 14.sp) }
+                    .weight(1f)
+                    .height(48.dp),
+            ) { TextMMD(text = "Place", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
+        } else {
+            OutlinedButtonMMD(
+                onClick = {},
+                enabled = false,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+            ) { TextMMD(text = "Place", fontSize = 15.sp) }
         }
     }
 }
