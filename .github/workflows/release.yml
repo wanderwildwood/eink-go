@@ -63,7 +63,9 @@ jobs:
       # binary in it was produced from the vendored tarball by the script in this repo.
       - name: Rebuild the engine from source
         run: |
-          sha256sum -c engine/gnugo-3.8.tar.gz.sha256
+          # The checksum file names the tarball without a path, so it has to be checked
+          # from the directory the tarball is actually in.
+          (cd engine && sha256sum -c gnugo-3.8.tar.gz.sha256)
           ANDROID_NDK_HOME=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1) \
             ./engine/build-gnugo.sh
           git diff --stat -- app/src/main/jniLibs || true
