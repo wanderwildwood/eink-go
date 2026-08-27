@@ -44,7 +44,13 @@ tar xzf "$HERE/gnugo-3.8.tar.gz" -C "$BUILD"
 
 echo "==> Pass 1: host build (generates the pattern databases)"
 cd "$SRC"
-./configure --quiet CFLAGS="-fcommon -O2"
+# --without-curses and --without-readline are not about the host build at all: pass 2
+# reuses the config.h that configure writes here, and configure fills it in from what is
+# installed on *this* machine. A build box with ncurses headers therefore produces a
+# config.h claiming curses is available, and the cross compile then fails on a missing
+# <curses.h> that Android was never going to have. Neither library is wanted anyway - they
+# serve the ASCII interface, and this build only ever runs --mode gtp.
+./configure --quiet --without-curses --without-readline CFLAGS="-fcommon -O2"
 make -j"$(nproc)" >/dev/null
 
 # Sanity: the generated sources pass 2 depends on must now exist.
