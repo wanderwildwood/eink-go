@@ -24,15 +24,26 @@ data class Point(val col: Int, val row: Int)
 
 enum class Opponent { COMPUTER, HUMAN }
 
+/**
+ * Two settings, because on a 9x9 board GNU Go only has two.
+ *
+ * Measured by self-play, colours alternating: levels 1 and 3 are indistinguishable from
+ * each other (9-7 over 16 games), and so are levels 5 and 10 (12-12 over 24 games, mean
+ * margin a tenth of a point). The only real step is between 3 and 5. Level 10 therefore
+ * costs ten times the thinking time of level 5 - 3.4s against 0.33s per move on the
+ * Kompakt, in a middlegame - and plays no better for it.
+ *
+ * So the ladder stops at 5, and handicap is the dial for anything finer. That is the
+ * Go-native answer anyway: handicap is how the game has always handled unequal players.
+ */
 enum class Difficulty(val level: Int, val label: String) {
     EASY(1, "Easy"),
-    MEDIUM(5, "Medium"),
-    HARD(10, "Hard"),
+    NORMAL(5, "Normal"),
 }
 
 data class GameConfig(
     val opponent: Opponent = Opponent.COMPUTER,
-    val difficulty: Difficulty = Difficulty.MEDIUM,
+    val difficulty: Difficulty = Difficulty.NORMAL,
     val humanColor: Stone = Stone.BLACK,
     /** Free stones for Black before play starts. 0, or 2 upwards - a handicap of 1 means nothing. */
     val handicap: Int = 0,

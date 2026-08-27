@@ -45,7 +45,7 @@ import com.wanderwildwood.einkgo.game.Stone
 @Composable
 fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
     var opponent by remember { mutableStateOf(Opponent.COMPUTER) }
-    var difficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
+    var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
     var humanColor by remember { mutableStateOf(Stone.BLACK) }
     var handicap by remember { mutableStateOf(0) }
 
