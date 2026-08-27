@@ -75,7 +75,11 @@ jobs:
             echo "Installing pinned NDK $NDK_VERSION"
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION"
           fi
-          ./engine/build-gnugo.sh
+          # The runner image sets ANDROID_NDK_HOME to an NDK of its own choosing - a third
+          # version again, neither the newest installed nor the pinned one - and the script
+          # honours that variable if it is set. Point it at the pin explicitly, or the
+          # environment quietly wins and the script refuses to build.
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION" ./engine/build-gnugo.sh
           git diff --stat -- app/src/main/jniLibs || true
 
       - name: Build release APK
