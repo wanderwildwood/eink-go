@@ -307,6 +307,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissMessage() = _state.update { it?.copy(message = null) }
 
+    /** A counted game: who won by how much, and which stones were counted as dead. */
+    private class Counted(val score: String, val dead: Set<Point>)
+
     private fun continueAfterHumanMove(active: GnuGo, config: GameConfig, message: String? = null) {
         if (config.opponent == Opponent.COMPUTER) {
             sync(active, Phase.THINKING, message)
@@ -351,15 +354,65 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Counts the finished game - and if the engine dies counting it, builds another one
+     * and asks that.
+     *
+     * GNU Go can hit an assertion inside its own scoring code: `findstones` handed a pass
+     * where a stone belongs, in `final_score`. It is not reliable - the same finished
+     * position crashed twice and then counted correctly on the third attempt, and never
+     * crashes at all when the same commands are replayed outside the app - which is what
+     * makes a retry worth having. Nothing is lost when it happens: every move is known,
+     * so a fresh engine can be handed the whole game and asked again.
+     *
+     * A second failure falls through to the caller, which reports it and stops.
+     */
     private fun finish(active: GnuGo) {
         store.clear()
-        val score = active.finalScore()
-        val dead = active.deadStones()
-        sync(active, Phase.FINISHED)
+        val first = runCatching { count(active) }
+        val (counter, counted) = when {
+            first.isSuccess -> active to first.getOrThrow()
+            else -> rebuiltEngine().let { it to count(it) }
+        }
+        sync(counter, Phase.FINISHED)
         _state.update {
-            it?.copy(result = formatResult(score), dead = dead, message = null)
+            it?.copy(
+                result = formatResult(counted.score),
+                dead = counted.dead,
+                // Two passes and a count is the only way here; resigning and taking a
+                // finished game back both clear this. Without it the dialog never showed
+                // the komi, the handicap or the dead stones it was written to explain.
+                wasScored = true,
+                message = null,
+            )
         }
     }
+
+    private fun count(active: GnuGo) = Counted(active.finalScore(), active.deadStones())
+
+    /**
+     * A new engine with this game replayed into it, replacing the one that died.
+     *
+     * The seed is a new one on purpose. The moves decide the position and the position is
+     * what gets counted, so a different seed costs nothing and does not walk the engine
+     * back down whichever path it fell off.
+     */
+    private fun rebuiltEngine(): GnuGo {
+        val config = _state.value?.config ?: throw IllegalStateException("No game to count")
+        runCatching { engine?.close() }
+        engine = null
+        seed = newSeed()
+        val fresh = GnuGo(binaryPath).apply {
+            start(config.difficulty.level, config.komi, config.handicap, seed)
+        }
+        moves.forEachIndexed { index, move -> fresh.play(colourOf(index), move) }
+        engine = fresh
+        return fresh
+    }
+
+    /** Which side played the move at [index]. One side opens and every move alternates. */
+    private fun colourOf(index: Int): Stone =
+        if (index % 2 == 0) firstToMove else firstToMove.other
 
     /** Reads the whole position back out of the engine, which is the only thing that knows it. */
     private fun sync(active: GnuGo, phase: Phase, message: String? = null) {

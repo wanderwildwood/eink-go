@@ -48,11 +48,26 @@ class GnuGo(private val binaryPath: String) {
     private val diagnosticsLock = Any()
 
     /**
+     * Every command sent, most recent last.
+     *
+     * Half of an engine failure is what the engine said; the other half is what it was
+     * asked. Replaying the first crash from a shell, by hand, matched what the app was
+     * believed to send and did not reproduce it - which is a good reason to record what
+     * it actually sends rather than reconstruct it.
+     */
+    private val conversation = ArrayDeque<String>()
+
+    /** The seed we gave it. GNU Go reports its own as 0, so it cannot be read back out. */
+    private var seed = 0
+
+    /**
      * [seed] fixes the game the engine will play. GNU Go seeds itself from the clock when
      * it is not told, which makes every game different but also makes none of them
      * repeatable; passing our own keeps the variety and buys back the repeat.
      */
     fun start(level: Int, komi: Double, handicap: Int, seed: Int) {
+        this.seed = seed
+        synchronized(diagnosticsLock) { conversation.clear() }
         val started = ProcessBuilder(binaryPath, "--mode", "gtp", "--seed", "$seed").start()
         process = started
         reader = started.inputStream.bufferedReader()
@@ -94,6 +109,11 @@ class GnuGo(private val binaryPath: String) {
         val out = writer ?: throw GnuGoException("Engine is not running")
         val input = reader ?: throw GnuGoException("Engine is not running")
 
+        synchronized(diagnosticsLock) {
+            conversation.addLast(command)
+            while (conversation.size > CONVERSATION_LINES) conversation.removeFirst()
+        }
+
         try {
             out.write(command)
             out.write("\n")
@@ -130,16 +150,24 @@ class GnuGo(private val binaryPath: String) {
         // stderr is a separate pipe drained by a separate thread, so it is routinely a
         // line or two behind stdout closing. Its last words are the point of this path.
         stderrDrain?.join(DRAIN_GRACE_MS)
-        val said = synchronized(diagnosticsLock) { diagnostics.toList() }
-        if (said.isEmpty()) return "The engine stopped during '$command'"
+        val (said, asked) = synchronized(diagnosticsLock) {
+            diagnostics.toList() to conversation.toList()
+        }
 
-        Log.e(TAG, "Engine died during '$command':\n" + said.joinToString("\n"))
-        val bug = said.firstOrNull { it.contains(BUG_REPORT) }
-            ?: return "The engine stopped during '$command'"
-        // gnugo 3.8 (seed 1787830629): You stepped on a bug.
-        val seed = SEED_IN_BUG_REPORT.find(bug)?.groupValues?.get(1)
-        return if (seed == null) "The engine hit a bug in itself"
-        else "The engine hit a bug in itself. Game $seed."
+        Log.e(
+            TAG,
+            "Engine died during '$command', seed $seed.\n" +
+                "Asked:\n" + asked.joinToString("\n") + "\n" +
+                "Said:\n" + said.joinToString("\n"),
+        )
+
+        // The seed is ours, not the one GNU Go prints beside its bug report - that one
+        // comes back 0 in GTP mode and is no use to anybody trying to play the game again.
+        return if (said.any { it.contains(BUG_REPORT) }) {
+            "The engine hit a bug in itself. Game $seed."
+        } else {
+            "The engine stopped during '$command'"
+        }
     }
 
     fun play(color: Stone, point: Point?) {
@@ -216,9 +244,11 @@ class GnuGo(private val binaryPath: String) {
 
         /** Enough for an assertion, the board it happened on, and the SGF beneath it. */
         const val DIAGNOSTIC_LINES = 200
+
+        /** A whole 9x9 game is about six commands a move, so this reaches back far enough. */
+        const val CONVERSATION_LINES = 400
         const val DRAIN_GRACE_MS = 1000L
         const val BUG_REPORT = "You stepped on a bug"
-        val SEED_IN_BUG_REPORT = Regex("\\(seed (\\d+)\\)")
     }
 }
 

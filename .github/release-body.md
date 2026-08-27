@@ -1,18 +1,22 @@
 A Go game for the Mudita Kompakt. 9x9, against GNU Go or two people sharing the
 phone, with [GNU Go](https://www.gnu.org/software/gnugo/) as the engine.
 
-**1.0.2** — the opponent is called GNU Go now, rather than "Computer": it is a particular
-engine with a particular way of playing, and it is the reason a finished game can be
-counted properly.
+**1.0.3** — a finished game is no longer lost when the engine fails to count it.
 
-The rest is about an engine that stops. GNU Go can hit an assertion inside itself and
-abort - it happened twice here - and everything it says on its way out, including the
-position it died on, used to be thrown away. It is now kept: the game gets a number that
-replays it move for move, and that number is on the screen when it happens. A game that
-ends this way says so in a dialog rather than in a line of title bar too narrow to hold
-it, and an answer from the engine that is not a move is no longer mistaken for a pass.
+GNU Go can abort inside its own scoring code: `findstones` handed a pass where a stone
+belongs, in `final_score`. It is not reliable - the same finished position aborted twice
+and then counted correctly on the third attempt - and nothing is actually lost when it
+happens, because every move of the game is known. So the app now builds a second engine,
+replays the game into it, and asks that one to count instead. Only if that fails too does
+it give up.
 
-Tapping the result at the top of a finished game brings back the full score.
+The line under a result explaining the count - the komi, the handicap, whether stones were
+counted as dead - has never once appeared. It does now.
+
+A crash also names the right game: GNU Go reports its own seed as 0 over GTP, so the number
+offered for replaying a failure was 0 and no use to anyone. It is now the seed the app
+actually gave it. Alongside what the engine said as it died, the app now records what it
+was asked.
 
 No permissions, no network — see [PRIVACY.md](PRIVACY.md).
 
