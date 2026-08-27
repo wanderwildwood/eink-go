@@ -11,23 +11,23 @@ already ships with, with GNU Go bundled as the engine.
 
 ## What it does
 
-- **9x9 board.** Only. The engine handles any size and the board would scale, but 19x19 on
+- 9x9 board, only. The engine handles any size and the board would scale, but 19x19 on
   a 360dp-wide panel gives 18dp touch targets, which is not a game anyone enjoys playing.
-- **Against GNU Go** at two strengths, playing either colour, or **two players** on
-  one device, pass-and-play.
-- **Handicap of 2 to 5 stones.** This is the setting a Go app actually needs. No difficulty
-  slider makes an engine a fair contest for a beginner; handicap exists precisely to do that.
-- **Hint.** Asks the engine what it would play and offers it as a preview stone, so you can
+- Against GNU Go at two strengths, playing either colour, or two players on one device,
+  pass-and-play.
+- Handicap of 2 to 5 stones. A difficulty setting cannot make an engine a fair contest for a
+  beginner; handicap can.
+- Hint asks the engine what it would play and offers it as a preview stone, so you can
   accept it or ignore it. Nothing is committed by asking.
-- **Tap to preview, tap again to place.** A stone is never played by a stray touch. The
+- Tap to preview, tap again to place. A stone is never played by a stray touch. The
   Place button does the same thing for anyone who would rather press a button.
-- **Take back a move** - and against GNU Go, its reply along with it. A finished
+- Take back a move, and against GNU Go, its reply along with it. A finished
   game can be taken back into, so a game lost to one careless move is still worth looking at.
-- **Proper scoring.** Two passes end the game and GNU Go scores it, including working out
+- Two passes end the game and GNU Go scores it, including working out
   which stones are dead. Those are marked with a × on the board.
-- **It keeps the game you were in the middle of.** Turn the phone off mid-game and it comes
+- It keeps the game you were in the middle of. Turn the phone off mid-game and it comes
   back, undo history included.
-- **No permissions, no network.** Nothing leaves the phone, because there is no route off
+- No permissions and no network. Nothing leaves the phone, because there is no route off
   it. See [PRIVACY.md](PRIVACY.md).
 
 ## Why only two difficulty settings
