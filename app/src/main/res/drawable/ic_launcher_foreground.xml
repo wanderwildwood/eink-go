@@ -1,34 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Adaptive icon foreground.
      The launcher masks this to a shape it chooses, and only the central 72 of these 108
-     units are guaranteed to survive - roughly 18 to 90. Everything here stays inside that,
-     which is why the board is a corner of four intersections rather than a whole grid:
-     at the size a launcher actually draws this, anything finer turns to mush. -->
+     units are guaranteed to survive - roughly 18 to 90. Everything here stays inside that.
+
+     The board is drawn as a whole small grid rather than a corner, and the stones are kept
+     under half a cell. An earlier version used two big stones on a short cross and, seen at
+     the size a launcher actually draws, read as two lollipops rather than a game of Go:
+     the stones swamped the little grid that was supposed to say what they were sitting on. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- two lines each way, crossing at 40 and 68 -->
+    <!-- a 4x4 grid: three cells each way, spanning 24 to 84 -->
     <path
         android:strokeColor="#000000"
-        android:strokeWidth="4"
-        android:pathData="M26,40 L82,40 M26,68 L82,68" />
+        android:strokeWidth="3"
+        android:pathData="M24,24 L84,24 M24,44 L84,44 M24,64 L84,64 M24,84 L84,84" />
     <path
         android:strokeColor="#000000"
-        android:strokeWidth="4"
-        android:pathData="M40,26 L40,82 M68,26 L68,82" />
+        android:strokeWidth="3"
+        android:pathData="M24,24 L24,84 M44,24 L44,84 M64,24 L64,84 M84,24 L84,84" />
 
-    <!-- black stone on the upper left crossing -->
     <path
         android:fillColor="#000000"
-        android:pathData="M40,40m-17,0a17,17 0,1 1,34 0a17,17 0,1 1,-34 0" />
+        android:pathData="M44,44m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
 
-    <!-- white stone on the lower right crossing -->
     <path
         android:fillColor="#FFFFFF"
         android:strokeColor="#000000"
-        android:strokeWidth="4.5"
-        android:pathData="M68,68m-17,0a17,17 0,1 1,34 0a17,17 0,1 1,-34 0" />
+        android:strokeWidth="3"
+        android:pathData="M64,64m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
 </vector>
