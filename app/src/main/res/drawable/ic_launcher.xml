@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A corner of a goban with one stone of each colour. Pure black on white, no
+     gradients or shadows: anything subtler than this disappears on E Ink. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <group>
+        <!-- grid -->
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="3"
+            android:pathData="M26,26 L82,26 M26,54 L82,54 M26,82 L82,82" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="3"
+            android:pathData="M26,26 L26,82 M54,26 L54,82 M82,26 L82,82" />
+
+        <!-- black stone, top left -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M26,26m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+
+        <!-- white stone, centre -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:strokeColor="#000000"
+            android:strokeWidth="4"
+            android:pathData="M54,54m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+    </group>
+</vector>
