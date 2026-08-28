@@ -29,9 +29,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
         )
 
         Spacer(Modifier.height(14.dp))
-        TextMMD(text = "No permissions. No network.", fontSize = 14.sp)
-
-        Spacer(Modifier.height(14.dp))
         TextMMD(text = "GNU General Public License v3", fontSize = 14.sp)
         TextMMD(
             text = "GNU Go 3.8 \u2014 \u00a9 1999\u20132009 Free Software Foundation, " +
