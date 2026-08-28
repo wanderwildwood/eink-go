@@ -22,50 +22,32 @@ import com.wanderwildwood.kuroban.BuildConfig
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
     EInkDialog(onDismiss = onDismiss) {
-        TextMMD(text = "Go", fontSize = 20.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(2.dp))
-        TextMMD(text = "Version ${BuildConfig.VERSION_NAME}", fontSize = 14.sp)
-
-        Spacer(Modifier.height(14.dp))
         TextMMD(
-            text = "A game of Go for the Kompakt. 9x9, against GNU Go or two people " +
-                "sharing the phone. No permissions, no network, nothing leaves the device.",
-            fontSize = 14.sp,
-        )
-
-        Spacer(Modifier.height(14.dp))
-        TextMMD(
-            text = "Almost everything written about Go is about the 19x19 board. " +
-                "\u201881 Little Lions\u2019 by Immanuel deVillers is an introduction to " +
-                "this one, free to read at:",
-            fontSize = 14.sp,
-        )
-        TextMMD(
-            text = "archive.org/details/81LittleLions",
-            fontSize = 14.sp,
+            text = "Go ${BuildConfig.VERSION_NAME}",
+            fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
         )
 
         Spacer(Modifier.height(14.dp))
-        TextMMD(
-            text = "Free software under the GNU General Public License v3.",
-            fontSize = 14.sp,
-        )
+        TextMMD(text = "No permissions. No network.", fontSize = 14.sp)
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
+        TextMMD(text = "GNU General Public License v3", fontSize = 14.sp)
         TextMMD(
-            text = "Plays using GNU Go 3.8, copyright 1999-2009 Free Software Foundation, " +
-                "included unmodified under the same licence.",
+            text = "GNU Go 3.8 \u2014 \u00a9 1999\u20132009 Free Software Foundation, " +
+                "unmodified, same licence",
             fontSize = 14.sp,
         )
 
         Spacer(Modifier.height(14.dp))
-        TextMMD(text = "Source, and your rights to it:", fontSize = 14.sp)
+        TextMMD(text = "github.com/wanderwildwood/kuroban", fontSize = 14.sp)
+
+        Spacer(Modifier.height(14.dp))
         TextMMD(
-            text = "github.com/wanderwildwood/kuroban",
+            text = "New to the 9x9 board? \u201881 Little Lions\u2019 by Immanuel deVillers:",
             fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
         )
+        TextMMD(text = "archive.org/details/81LittleLions", fontSize = 14.sp)
 
         Spacer(Modifier.height(18.dp))
         OutlinedButtonMMD(
