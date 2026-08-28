@@ -73,6 +73,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-        ) { TextMMD(text = "CLOSE", fontSize = 15.sp) }
+        ) { TextMMD(text = "Close", fontSize = 15.sp) }
     }
 }

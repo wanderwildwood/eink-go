@@ -17,14 +17,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ThemeMMD {
-                EInkGo()
+                Kuroban()
             }
         }
     }
 }
 
 @Composable
-private fun EInkGo(viewModel: GameViewModel = viewModel()) {
+private fun Kuroban(viewModel: GameViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     when (val game = state) {

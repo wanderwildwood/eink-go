@@ -148,7 +148,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                     .fillMaxWidth()
                     .height(54.dp),
             ) {
-                TextMMD(text = "PLAY", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                TextMMD(text = "Play", fontSize = 18.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import com.wanderwildwood.kuroban.game.GameState
 import com.wanderwildwood.kuroban.game.Phase
 import com.wanderwildwood.kuroban.game.Point
 import com.wanderwildwood.kuroban.game.Stone
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,14 +165,14 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-            ) { TextMMD(text = "NEW GAME", fontSize = 15.sp) }
+            ) { TextMMD(text = "New game", fontSize = 15.sp) }
             Spacer(Modifier.height(10.dp))
             OutlinedButtonMMD(
                 onClick = { resultDismissed = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-            ) { TextMMD(text = "LOOK AT BOARD", fontSize = 15.sp) }
+            ) { TextMMD(text = "Look at board", fontSize = 15.sp) }
         }
     }
 
@@ -192,14 +194,14 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-            ) { TextMMD(text = "NEW GAME", fontSize = 15.sp) }
+            ) { TextMMD(text = "New game", fontSize = 15.sp) }
             Spacer(Modifier.height(10.dp))
             OutlinedButtonMMD(
                 onClick = { breakageDismissed = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-            ) { TextMMD(text = "LOOK AT BOARD", fontSize = 15.sp) }
+            ) { TextMMD(text = "Look at board", fontSize = 15.sp) }
         }
     }
 }
@@ -347,6 +349,17 @@ private fun BottomBar(
 /** Four buttons across 360dp cannot afford the default 16dp of padding each side. */
 private val TIGHT = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 8.dp)
 
+/**
+ * The menu the back button opens, mid-game.
+ *
+ * Both of the things in it throw away the game being played, and the back button is an
+ * easy thing to press by accident, so neither happens on one tap: the button says what it
+ * will do, and asks. It forgets being asked after a few seconds, so a menu left open on a
+ * phone in a pocket is not a game waiting to be resigned.
+ *
+ * The way out is first and is the solid one. Opening this dialog by mistake is the most
+ * likely reason to be looking at it.
+ */
 @Composable
 private fun MenuDialog(
     canResign: Boolean,
@@ -358,26 +371,62 @@ private fun MenuDialog(
         TextMMD(text = "Menu", fontSize = 20.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(18.dp))
         ButtonMMD(
-            onClick = onNewGame,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-        ) { TextMMD(text = "NEW GAME", fontSize = 15.sp) }
-        Spacer(Modifier.height(10.dp))
-        OutlinedButtonMMD(
-            onClick = onResign,
-            enabled = canResign,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-        ) { TextMMD(text = "RESIGN", fontSize = 15.sp) }
-        Spacer(Modifier.height(10.dp))
-        OutlinedButtonMMD(
             onClick = onDismiss,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-        ) { TextMMD(text = "BACK TO GAME", fontSize = 15.sp) }
+        ) { TextMMD(text = "Back to game", fontSize = 15.sp) }
+        Spacer(Modifier.height(10.dp))
+        ConfirmingButton(
+            label = "New game",
+            armedLabel = "Give up this game — tap again",
+            onConfirmed = onNewGame,
+        )
+        Spacer(Modifier.height(10.dp))
+        ConfirmingButton(
+            label = "Resign",
+            armedLabel = "Resign — tap again",
+            enabled = canResign,
+            onConfirmed = onResign,
+        )
+    }
+}
+
+/**
+ * A button that asks in its own face rather than stacking a second dialog on the first.
+ *
+ * One dialog on top of another is two full repaints to ask one question, and on this
+ * screen the question is small enough to fit where the answer goes.
+ */
+@Composable
+private fun ConfirmingButton(
+    label: String,
+    armedLabel: String,
+    onConfirmed: () -> Unit,
+    enabled: Boolean = true,
+) {
+    var armed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(armed) {
+        if (armed) {
+            delay(4000)
+            armed = false
+        }
+    }
+
+    OutlinedButtonMMD(
+        onClick = { if (armed) onConfirmed() else armed = true },
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+    ) {
+        TextMMD(
+            text = if (armed) armedLabel else label,
+            fontSize = 15.sp,
+            fontWeight = if (armed) FontWeight.Medium else FontWeight.Normal,
+            maxLines = 1,
+        )
     }
 }
 
