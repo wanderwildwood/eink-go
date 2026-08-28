@@ -35,6 +35,19 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
         Spacer(Modifier.height(14.dp))
         TextMMD(
+            text = "Almost everything written about Go is about the 19x19 board. " +
+                "\u201881 Little Lions\u2019 by Immanuel deVillers is an introduction to " +
+                "this one, free to read at:",
+            fontSize = 14.sp,
+        )
+        TextMMD(
+            text = "archive.org/details/81LittleLions",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+        )
+
+        Spacer(Modifier.height(14.dp))
+        TextMMD(
             text = "Free software under the GNU General Public License v3.",
             fontSize = 14.sp,
         )

@@ -34,6 +34,13 @@ already ships with, with GNU Go bundled as the engine.
 - No permissions and no network. Nothing leaves the phone, because there is no route off
   it. See [PRIVACY.md](PRIVACY.md).
 
+## Learning the small board
+
+Almost everything written about Go is about the 19x19 board. *81 Little Lions* by Immanuel
+deVillers is an introduction to the 9x9 one, and it is free to read at
+<https://archive.org/details/81LittleLions>. It is not mine and it is not bundled - it is
+just the best thing to hand somebody who has this app and no idea what to do with it.
+
 ## Why only two difficulty settings
 
 Because on a 9x9 board the engine only has two. Measured by self-play with colours
