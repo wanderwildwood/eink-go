@@ -56,7 +56,18 @@ fun GameScreen(
     var resultDismissed by remember(state.result) { mutableStateOf(false) }
     var breakageDismissed by remember(state.message) { mutableStateOf(false) }
 
-    BackHandler { menuOpen = true }
+    // Once a game is over there is nothing left to resign from, and its verdict already
+    // carries the only two things left to do. So asking for the menu after the game has
+    // ended asks for that dialog back, rather than a menu with a dead button in it.
+    fun openMenu() {
+        when {
+            state.phase == Phase.BROKEN -> breakageDismissed = false
+            state.result != null -> resultDismissed = false
+            else -> menuOpen = true
+        }
+    }
+
+    BackHandler { openMenu() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -79,7 +90,7 @@ fun GameScreen(
                     // A dead engine has nothing to say about prisoners, and the room it
                     // was taking is room the explanation needs.
                     if (state.phase != Phase.BROKEN) Captures(state)
-                    MenuButton(onClick = { menuOpen = true })
+                    MenuButton(onClick = { openMenu() })
                 },
             )
         },
