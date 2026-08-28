@@ -50,7 +50,7 @@ GNU Go engine — none of which the app uses to communicate with anything.
 
 You do not have to take any of it on trust:
 
-- The source is at <https://github.com/wanderwildwood/eink-go>, and each release is tagged.
+- The source is at <https://github.com/wanderwildwood/kuroban>, and each release is tagged.
 - `grep -r uses-permission app/src/main/AndroidManifest.xml` returns nothing.
 - Any APK can be checked with `aapt dump permissions` or by opening it as a zip.
 

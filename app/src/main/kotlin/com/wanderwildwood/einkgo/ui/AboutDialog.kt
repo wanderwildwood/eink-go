@@ -49,7 +49,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         Spacer(Modifier.height(14.dp))
         TextMMD(text = "Source, and your rights to it:", fontSize = 14.sp)
         TextMMD(
-            text = "github.com/wanderwildwood/eink-go",
+            text = "github.com/wanderwildwood/kuroban",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
         )

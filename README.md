@@ -1,7 +1,11 @@
-# eInk GO
+# 九路盤 kuroban — eInk GO
 
 A game of Go for the [Mudita Kompakt](https://mudita.com/products/kompakt/), built for its
 E Ink screen. 9x9, against GNU Go or two people passing one phone back and forth.
+
+*Kuroban* is 九路盤 — a nine-road board. The 路 are the lines you play on, so a full board is a
+十九路盤 and this one is the small board: the one you learn on, the one a game finishes on in an
+evening, and the only one that was ever going to fit a phone this size.
 
 Not a fork. Written from scratch in Kotlin and Jetpack Compose, using Mudita's own
 [MMD](https://github.com/mudita/MMD) design system so it looks like the apps the phone

@@ -119,26 +119,26 @@ jobs:
       # Two copies of the same APK go up. The versioned name is what people end up with
       # in their downloads folder and what the checksum in a forum post refers to; the
       # unversioned one exists so that
-      #   .../releases/latest/download/eink-go.apk
+      #   .../releases/latest/download/kuroban.apk
       # is a link that keeps working after the next release, which a versioned link does
       # not. Both are byte-identical - only the file name differs.
       - name: Rename APK and generate checksum
         run: |
-          apk_name="eink-go-${GITHUB_REF_NAME}.apk"
+          apk_name="kuroban-${GITHUB_REF_NAME}.apk"
           apk_path=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk')
           cp "$apk_path" "$apk_name"
           sha256sum "$apk_name" > "${apk_name}.sha256"
-          cp "$apk_path" eink-go.apk
-          sha256sum eink-go.apk > eink-go.apk.sha256
+          cp "$apk_path" kuroban.apk
+          sha256sum kuroban.apk > kuroban.apk.sha256
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          # eink-go-*.apk does not match eink-go.apk, so the fixed-name pair is listed.
+          # kuroban-*.apk does not match kuroban.apk, so the fixed-name pair is listed.
           files: |
-            eink-go-*.apk
-            eink-go-*.apk.sha256
-            eink-go.apk
-            eink-go.apk.sha256
+            kuroban-*.apk
+            kuroban-*.apk.sha256
+            kuroban.apk
+            kuroban.apk.sha256
           body_path: .github/release-body.md
           generate_release_notes: true
