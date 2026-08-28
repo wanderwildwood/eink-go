@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.wanderwildwood.einkgo.game.Stone
+import com.wanderwildwood.kuroban.game.Stone
 
 /**
  * A stone, small, for use in a line of text.

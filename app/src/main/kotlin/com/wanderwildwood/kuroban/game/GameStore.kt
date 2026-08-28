@@ -1,7 +1,7 @@
-package com.wanderwildwood.einkgo.game
+package com.wanderwildwood.kuroban.game
 
-import com.wanderwildwood.einkgo.engine.parseVertex
-import com.wanderwildwood.einkgo.engine.toVertex
+import com.wanderwildwood.kuroban.engine.parseVertex
+import com.wanderwildwood.kuroban.engine.toVertex
 import java.io.File
 
 /**

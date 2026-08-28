@@ -1,9 +1,9 @@
-package com.wanderwildwood.einkgo.engine
+package com.wanderwildwood.kuroban.engine
 
 import android.util.Log
-import com.wanderwildwood.einkgo.game.BOARD_SIZE
-import com.wanderwildwood.einkgo.game.Point
-import com.wanderwildwood.einkgo.game.Stone
+import com.wanderwildwood.kuroban.game.BOARD_SIZE
+import com.wanderwildwood.kuroban.game.Point
+import com.wanderwildwood.kuroban.game.Stone
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.IOException

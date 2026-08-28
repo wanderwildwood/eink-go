@@ -1,10 +1,10 @@
-package com.wanderwildwood.einkgo.game
+package com.wanderwildwood.kuroban.game
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.wanderwildwood.einkgo.engine.EngineMove
-import com.wanderwildwood.einkgo.engine.GnuGo
+import com.wanderwildwood.kuroban.engine.EngineMove
+import com.wanderwildwood.kuroban.engine.GnuGo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column

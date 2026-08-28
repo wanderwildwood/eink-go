@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.game
+package com.wanderwildwood.kuroban.game
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

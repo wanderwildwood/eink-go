@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -32,10 +32,10 @@ import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
-import com.wanderwildwood.einkgo.game.Difficulty
-import com.wanderwildwood.einkgo.game.GameConfig
-import com.wanderwildwood.einkgo.game.Opponent
-import com.wanderwildwood.einkgo.game.Stone
+import com.wanderwildwood.kuroban.game.Difficulty
+import com.wanderwildwood.kuroban.game.GameConfig
+import com.wanderwildwood.kuroban.game.Opponent
+import com.wanderwildwood.kuroban.game.Stone
 
 /**
  * New game options, laid out the way Chess+ lays its own out: the opponent choice at the

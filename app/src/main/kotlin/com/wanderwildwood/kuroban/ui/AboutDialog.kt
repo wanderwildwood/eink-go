@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
-import com.wanderwildwood.einkgo.BuildConfig
+import com.wanderwildwood.kuroban.BuildConfig
 
 /**
  * What this is, what it is made of, and where the source lives.

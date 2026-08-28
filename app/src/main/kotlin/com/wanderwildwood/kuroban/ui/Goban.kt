@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -17,10 +17,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.wanderwildwood.einkgo.game.BOARD_SIZE
-import com.wanderwildwood.einkgo.game.GameState
-import com.wanderwildwood.einkgo.game.Point
-import com.wanderwildwood.einkgo.game.Stone
+import com.wanderwildwood.kuroban.game.BOARD_SIZE
+import com.wanderwildwood.kuroban.game.GameState
+import com.wanderwildwood.kuroban.game.Point
+import com.wanderwildwood.kuroban.game.Stone
 import kotlin.math.roundToInt
 
 /** Hoshi on a 9x9 board: the four 3-3 points and tengen. */

@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.game
+package com.wanderwildwood.kuroban.game
 
 /**
  * 9x9 only. The engine handles any size, and the UI would scale, but a 19x19 board on a

@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo.ui
+package com.wanderwildwood.kuroban.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -33,10 +33,10 @@ import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
-import com.wanderwildwood.einkgo.game.GameState
-import com.wanderwildwood.einkgo.game.Phase
-import com.wanderwildwood.einkgo.game.Point
-import com.wanderwildwood.einkgo.game.Stone
+import com.wanderwildwood.kuroban.game.GameState
+import com.wanderwildwood.kuroban.game.Phase
+import com.wanderwildwood.kuroban.game.Point
+import com.wanderwildwood.kuroban.game.Stone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

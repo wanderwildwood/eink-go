@@ -1,7 +1,7 @@
-package com.wanderwildwood.einkgo.engine
+package com.wanderwildwood.kuroban.engine
 
-import com.wanderwildwood.einkgo.game.BOARD_SIZE
-import com.wanderwildwood.einkgo.game.Point
+import com.wanderwildwood.kuroban.game.BOARD_SIZE
+import com.wanderwildwood.kuroban.game.Point
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

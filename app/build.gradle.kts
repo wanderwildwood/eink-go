@@ -7,16 +7,16 @@ plugins {
 }
 
 android {
-    namespace = "com.wanderwildwood.einkgo"
+    namespace = "com.wanderwildwood.kuroban"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.wanderwildwood.einkgo"
+        applicationId = "com.wanderwildwood.kuroban"
         // The Kompakt runs Android 12 (API 31); nothing here needs anything newer.
         minSdk = 31
         targetSdk = 31
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = 8
+        versionName = "1.1.0"
 
         ndk {
             // The bundled engine is built for the Kompakt and nothing else.

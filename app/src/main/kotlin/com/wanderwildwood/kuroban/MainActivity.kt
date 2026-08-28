@@ -1,4 +1,4 @@
-package com.wanderwildwood.einkgo
+package com.wanderwildwood.kuroban
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,9 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mudita.mmd.ThemeMMD
-import com.wanderwildwood.einkgo.game.GameViewModel
-import com.wanderwildwood.einkgo.ui.GameScreen
-import com.wanderwildwood.einkgo.ui.NewGameScreen
+import com.wanderwildwood.kuroban.game.GameViewModel
+import com.wanderwildwood.kuroban.ui.GameScreen
+import com.wanderwildwood.kuroban.ui.NewGameScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
