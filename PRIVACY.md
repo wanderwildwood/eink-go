@@ -1,6 +1,6 @@
 # Privacy
 
-eInk GO collects nothing, sends nothing, and asks for no permissions.
+Go collects nothing, sends nothing, and asks for no permissions.
 
 That is the whole policy. The rest of this page is only the evidence for it, because a
 privacy policy that cannot be checked is just a promise.

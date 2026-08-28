@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "eInk GO"
+rootProject.name = "kuroban"
 include(":app")

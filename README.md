@@ -1,4 +1,4 @@
-# 九路盤 kuroban — eInk GO
+# 九路盤 kuroban — Go
 
 A game of Go for the [Mudita Kompakt](https://mudita.com/products/kompakt/), built for its
 E Ink screen. 9x9, against GNU Go or two people passing one phone back and forth.
