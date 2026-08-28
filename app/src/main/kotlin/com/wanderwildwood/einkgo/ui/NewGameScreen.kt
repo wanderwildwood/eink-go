@@ -55,7 +55,7 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBarMMD(
-                title = { TextMMD(text = "eInk GO", fontSize = 24.sp, fontWeight = FontWeight.Medium) },
+                title = { TextMMD(text = "Go", fontSize = 24.sp, fontWeight = FontWeight.Medium) },
                 actions = { InfoButton(onClick = { aboutOpen = true }) },
             )
         },

@@ -22,7 +22,7 @@ import com.wanderwildwood.einkgo.BuildConfig
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
     EInkDialog(onDismiss = onDismiss) {
-        TextMMD(text = "eInk GO", fontSize = 20.sp, fontWeight = FontWeight.Medium)
+        TextMMD(text = "Go", fontSize = 20.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
         TextMMD(text = "Version ${BuildConfig.VERSION_NAME}", fontSize = 14.sp)
 
