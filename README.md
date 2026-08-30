@@ -11,7 +11,10 @@ Not a fork. Written from scratch in Kotlin and Jetpack Compose, using Mudita's o
 [MMD](https://github.com/mudita/MMD) design system so it looks like the apps the phone
 already ships with, with GNU Go bundled as the engine.
 
-![The board](screenshots/3-hint.png)
+| | |
+|---|---|
+| ![Setting up a game](screenshots/1-new-game.png) | ![A game in progress](screenshots/2-playing.png) |
+| ![A hint offered as a preview stone](screenshots/3-hint.png) | ![A finished game, counted](screenshots/4-scored.png) |
 
 ## What it does
 
