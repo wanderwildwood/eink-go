@@ -110,9 +110,9 @@ install over what you have, keeping your settings and anything the app has store
 
 ## Licence
 
-GPLv3. See [LICENSE](LICENSE).
+GPL-3.0-only. See [LICENSE](LICENSE).
 
-This app bundles [GNU Go](https://www.gnu.org/software/gnugo/), which is
-Copyright 1999-2009 by the Free Software Foundation, Inc. and licensed under the GPLv3.
-Bundling it makes this whole work GPLv3 too. GNU Go's complete corresponding source is in
-`engine/gnugo-3.8.tar.gz`, unmodified, along with the script that builds it.
+This app bundles [GNU Go](https://www.gnu.org/software/gnugo/), Copyright 1999-2009 by the Free
+Software Foundation, Inc., released under the GPL version 3 or later. Bundling it makes this
+whole work GPL too; version 3 is the version taken here. GNU Go's complete corresponding
+source is in `engine/gnugo-3.8.tar.gz`, unmodified, along with the script that builds it.
