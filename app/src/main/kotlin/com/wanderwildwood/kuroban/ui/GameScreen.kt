@@ -78,20 +78,31 @@ fun GameScreen(
             // each side has captured, and the way out. The board gets the rest.
             TopAppBarMMD(
                 title = {
-                    StatusTitle(
-                        state = state,
-                        // A dismissed result is not a discarded one: the verdict stays in
-                        // this slot, so the slot is where you would press to ask for the
-                        // rest of it back.
-                        onReopen = { resultDismissed = false }.takeIf {
-                            state.phase == Phase.FINISHED && state.result != null
-                        },
-                    )
+                    // The count sits in the middle of the bar rather than tucked against
+                    // the menu: equal air either side of it, so it reads as its own thing
+                    // between whose turn it is and the way out, instead of as a label on
+                    // the button next to it.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        StatusTitle(
+                            state = state,
+                            // A dismissed result is not a discarded one: the verdict stays
+                            // in this slot, so the slot is where you would press to ask for
+                            // the rest of it back.
+                            onReopen = { resultDismissed = false }.takeIf {
+                                state.phase == Phase.FINISHED && state.result != null
+                            },
+                        )
+                        Spacer(Modifier.weight(1f))
+                        // A dead engine has nothing to say about prisoners, and the room it
+                        // was taking is room the explanation needs.
+                        if (state.phase != Phase.BROKEN) Captures(state)
+                        Spacer(Modifier.weight(1f))
+                    }
                 },
                 actions = {
-                    // A dead engine has nothing to say about prisoners, and the room it
-                    // was taking is room the explanation needs.
-                    if (state.phase != Phase.BROKEN) Captures(state)
                     MenuButton(onClick = { openMenu() })
                 },
             )
