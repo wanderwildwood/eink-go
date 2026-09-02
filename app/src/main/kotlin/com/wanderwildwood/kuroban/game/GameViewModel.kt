@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wanderwildwood.kuroban.engine.EngineMove
 import com.wanderwildwood.kuroban.engine.GnuGo
+import com.wanderwildwood.kuroban.engine.writePosition
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +33,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val store = GameStore(File(application.filesDir, "game-in-progress.txt"))
 
+    /**
+     * Where a hand-placed position is written for the engine to read.
+     *
+     * Scratch, and rewritten on every stone: what is worth keeping is saved by [store]
+     * alongside the rest of the game.
+     */
+    private val positionFile = File(application.filesDir, "position.sgf")
+
     /** Every move of the current game, a null being a pass. This is what gets saved. */
     private val moves = mutableListOf<Point?>()
 
@@ -49,6 +58,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var movesPlayed = 0
     private var consecutivePasses = 0
     private var firstToMove = Stone.BLACK
+
+    /** The stones placed by hand, while they are still being placed and afterwards. */
+    private var setupBlack: Set<Point> = emptySet()
+    private var setupWhite: Set<Point> = emptySet()
 
     /**
      * Held for as long as a move is being played out.
@@ -83,6 +96,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         movesPlayed = 0
         consecutivePasses = 0
         firstToMove = config.firstToMove
+        setupBlack = config.setup?.black.orEmpty()
+        setupWhite = config.setup?.white.orEmpty()
         moves.clear()
         _state.value = GameState(config = config, phase = Phase.STARTING)
 
@@ -92,6 +107,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     start(config.difficulty.level, config.komi, config.handicap, seed)
                 }
                 engine = fresh
+                // The hand-placed stones go down before anything played on top of them.
+                if (config.setup != null) loadSetup(fresh)
+                if (saved.editing) {
+                    sync(fresh, Phase.SETUP)
+                    return@launch
+                }
                 for (move in saved.moves) {
                     fresh.play(toMove, move)
                     movesPlayed++
@@ -120,9 +141,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun persist() {
+    private fun persist(editing: Boolean = false) {
         val config = _state.value?.config ?: return
-        store.save(config, moves.toList(), seed)
+        // Hand-placed stones keep changing while they are being placed, so they are taken
+        // from here rather than from whatever the config was carrying when it started.
+        val toSave = if (config.setup == null) config else config.copy(setup = currentSetup())
+        store.save(toSave, moves.toList(), seed, editing)
     }
 
     fun newGame(config: GameConfig) {
@@ -133,6 +157,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         consecutivePasses = 0
         moveInFlight.set(false)
         firstToMove = config.firstToMove
+        setupBlack = config.setup?.black.orEmpty()
+        setupWhite = config.setup?.white.orEmpty()
         moves.clear()
         _state.value = GameState(config = config, phase = Phase.STARTING)
 
@@ -143,6 +169,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     start(config.difficulty.level, config.komi, config.handicap, seed)
                 }
                 engine = fresh
+                // A setup goes to the board editor rather than straight into a game -
+                // including an empty one, which is what asking to set a position up
+                // gives you before you have placed anything.
+                if (config.setup != null) {
+                    loadSetup(fresh)
+                    sync(fresh, Phase.SETUP)
+                    return@launch
+                }
                 val computerOpens = config.opponent == Opponent.COMPUTER &&
                     config.humanColor != config.firstToMove
                 if (computerOpens) {
@@ -179,6 +213,134 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (current.phase != Phase.PLAYING || !current.isHumanTurn) return
         if (point !in current.legal) return
         if (current.preview == point) confirmMove() else _state.update { it?.copy(preview = point, message = null) }
+    }
+
+    /**
+     * Places, replaces or lifts a stone while a position is being set up.
+     *
+     * [placing] is the stone a tap puts down, or null to take one off. Tapping a point
+     * that already holds the stone being placed does nothing: taking a stone off is what
+     * the Erase setting is for, and a tap that quietly undid itself would be worse than
+     * a tap that does nothing.
+     */
+    fun setupTap(point: Point, placing: Stone?) {
+        val current = _state.value ?: return
+        val active = engine ?: return
+        if (current.phase != Phase.SETUP) return
+
+        val standing = when {
+            point in setupBlack -> Stone.BLACK
+            point in setupWhite -> Stone.WHITE
+            else -> null
+        }
+        if (standing == placing) return
+
+        if (!moveInFlight.compareAndSet(false, true)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val black = setupBlack.toMutableSet().apply { remove(point) }
+                val white = setupWhite.toMutableSet().apply { remove(point) }
+                when (placing) {
+                    Stone.BLACK -> black += point
+                    Stone.WHITE -> white += point
+                    null -> Unit
+                }
+
+                loadSetup(active, black, white)
+                // Lifting a stone can only give the stones around it more room, so the
+                // only edit that can produce an impossible position is one that adds.
+                if (placing != null && strangles(active, point, black, white)) {
+                    loadSetup(active)
+                    // The bar holds about this much at the size it is set in, and the
+                    // sentence is cut rather than wrapped when it does not fit.
+                    _state.update { it?.copy(message = "That leaves no liberties") }
+                } else {
+                    setupBlack = black
+                    setupWhite = white
+                    sync(active, Phase.SETUP)
+                }
+            } catch (e: Exception) {
+                broken(e)
+            } finally {
+                moveInFlight.set(false)
+            }
+        }
+    }
+
+    /** Which colour plays the first move out of the position being set up. */
+    fun setFirstToMove(stone: Stone) {
+        val current = _state.value ?: return
+        val active = engine ?: return
+        if (current.phase != Phase.SETUP || stone == firstToMove) return
+
+        if (!moveInFlight.compareAndSet(false, true)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                firstToMove = stone
+                loadSetup(active)
+                sync(active, Phase.SETUP)
+            } catch (e: Exception) {
+                broken(e)
+            } finally {
+                moveInFlight.set(false)
+            }
+        }
+    }
+
+    /** Leaves the stones where they are and starts playing from them. */
+    fun startFromSetup() {
+        val current = _state.value ?: return
+        val active = engine ?: return
+        if (current.phase != Phase.SETUP) return
+
+        if (!moveInFlight.compareAndSet(false, true)) return
+        val config = current.config.copy(setup = currentSetup())
+        _state.update { it?.copy(config = config, message = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val computerOpens = config.opponent == Opponent.COMPUTER &&
+                    config.humanColor != firstToMove
+                if (computerOpens) {
+                    sync(active, Phase.THINKING)
+                    computerTurn(active)
+                } else {
+                    sync(active, Phase.PLAYING)
+                }
+            } catch (e: Exception) {
+                broken(e)
+            } finally {
+                moveInFlight.set(false)
+            }
+        }
+    }
+
+    private fun currentSetup() = Setup(setupBlack, setupWhite, firstToMove)
+
+    /**
+     * Whether the stone just placed at [placed] has left some group without a liberty.
+     *
+     * Only the new stone's own group and whatever it touches can have lost one, so those
+     * are the only points worth asking about - and the engine is the one asked, as it is
+     * for every other question with a Go answer in it.
+     */
+    private fun strangles(
+        active: GnuGo,
+        placed: Point,
+        black: Set<Point>,
+        white: Set<Point>,
+    ): Boolean = (listOf(placed) + placed.neighbours())
+        .filter { it in black || it in white }
+        .any { active.liberties(it) == 0 }
+
+    /** Puts a hand-placed position on the engine's board, in place of whatever is there. */
+    private fun loadSetup(
+        active: GnuGo,
+        black: Set<Point> = setupBlack,
+        white: Set<Point> = setupWhite,
+    ) {
+        val config = _state.value?.config ?: return
+        writePosition(positionFile, black, white, firstToMove, config.komi)
+        active.loadPosition(positionFile, config.komi, config.difficulty.level)
     }
 
     fun confirmMove() {
@@ -405,6 +567,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val fresh = GnuGo(binaryPath).apply {
             start(config.difficulty.level, config.komi, config.handicap, seed)
         }
+        // Same as anywhere else the game is rebuilt: the stones that were placed by hand
+        // are the board the moves were played on, so they go down before the moves do.
+        if (config.setup != null) {
+            writePosition(positionFile, setupBlack, setupWhite, firstToMove, config.komi)
+            fresh.loadPosition(positionFile, config.komi, config.difficulty.level)
+        }
         moves.forEachIndexed { index, move -> fresh.play(colourOf(index), move) }
         engine = fresh
         return fresh
@@ -441,7 +609,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         // Saving here rather than at each call site means no new way of ending a move can
         // forget to do it. A finished or broken game is not saved - and finish() and
         // resign() clear the file outright, so opening the app lands on a new game.
-        if (phase == Phase.PLAYING || phase == Phase.THINKING) persist()
+        when (phase) {
+            Phase.PLAYING, Phase.THINKING -> persist()
+            // A position half placed is worth keeping too. Copying a problem out of a
+            // book is exactly the moment somebody puts the phone down to look at the book.
+            Phase.SETUP -> persist(editing = true)
+            else -> Unit
+        }
     }
 
     private fun broken(cause: Exception) {

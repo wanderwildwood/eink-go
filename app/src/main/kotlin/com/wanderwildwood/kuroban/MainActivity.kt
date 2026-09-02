@@ -38,6 +38,9 @@ private fun Kuroban(viewModel: GameViewModel = viewModel()) {
             onUndo = viewModel::undo,
             onResign = viewModel::resign,
             onNewGame = viewModel::endGame,
+            onSetupTap = viewModel::setupTap,
+            onFirstToMove = viewModel::setFirstToMove,
+            onPlayFromSetup = viewModel::startFromSetup,
         )
     }
 }

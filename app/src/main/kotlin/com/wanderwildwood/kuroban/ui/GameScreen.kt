@@ -51,8 +51,15 @@ fun GameScreen(
     onUndo: () -> Unit,
     onResign: () -> Unit,
     onNewGame: () -> Unit,
+    onSetupTap: (Point, Stone?) -> Unit,
+    onFirstToMove: (Stone) -> Unit,
+    onPlayFromSetup: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    // What a tap on the board puts down while a position is being set up, or null for
+    // taking a stone off. It is only ever about the next tap, so it lives here rather
+    // than in the game.
+    var placing by remember { mutableStateOf<Stone?>(Stone.BLACK) }
     // Keyed on the result, so a new result opens the dialog again after an earlier one
     // was dismissed to look at the board.
     var resultDismissed by remember(state.result) { mutableStateOf(false) }
@@ -88,17 +95,29 @@ fun GameScreen(
                     ) {
                         StatusTitle(
                             state = state,
+                            // Two things live in this slot, and both are pressed for the
+                            // same reason - it is where the sentence you want to change or
+                            // to read again already is. Setting up, it says which colour
+                            // plays out of the position and swaps that colour when pressed.
                             // A dismissed result is not a discarded one: the verdict stays
-                            // in this slot, so the slot is where you would press to ask for
-                            // the rest of it back.
-                            onReopen = { resultDismissed = false }.takeIf {
-                                state.phase == Phase.FINISHED && state.result != null
+                            // here, so here is where you press to ask for the rest of it.
+                            onPress = when {
+                                state.phase == Phase.SETUP ->
+                                    { -> onFirstToMove(state.toMove.other) }
+
+                                state.phase == Phase.FINISHED && state.result != null ->
+                                    { -> resultDismissed = false }
+
+                                else -> null
                             },
                         )
                         Spacer(Modifier.weight(1f))
-                        // A dead engine has nothing to say about prisoners, and the room it
-                        // was taking is room the explanation needs.
-                        if (state.phase != Phase.BROKEN) Captures(state)
+                        // A dead engine has nothing to say about prisoners, and neither has
+                        // a board nobody has played on yet. The room they were taking is
+                        // room the explanation and the setting-up need.
+                        if (state.phase != Phase.BROKEN && state.phase != Phase.SETUP) {
+                            Captures(state)
+                        }
                         Spacer(Modifier.weight(1f))
                     }
                 },
@@ -116,26 +135,37 @@ fun GameScreen(
         ) {
             Goban(
                 state = state,
-                onTap = onTap,
+                onTap = { point ->
+                    if (state.phase == Phase.SETUP) onSetupTap(point, placing) else onTap(point)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 4.dp, vertical = 4.dp),
             )
 
-            BottomBar(
-                state = state,
-                onUndo = onUndo,
-                onPass = onPass,
-                onHint = onHint,
-                onConfirm = onConfirm,
-            )
+            if (state.phase == Phase.SETUP) {
+                SetupBar(
+                    placing = placing,
+                    onPlacing = { placing = it },
+                    onPlay = onPlayFromSetup,
+                )
+            } else {
+                BottomBar(
+                    state = state,
+                    onUndo = onUndo,
+                    onPass = onPass,
+                    onHint = onHint,
+                    onConfirm = onConfirm,
+                )
+            }
         }
     }
 
     if (menuOpen) {
         MenuDialog(
             canResign = state.phase == Phase.PLAYING,
+            settingUp = state.phase == Phase.SETUP,
             onResign = {
                 menuOpen = false
                 onResign()
@@ -230,13 +260,13 @@ fun GameScreen(
  * only in the dialog. [onReopen] is null whenever there is nothing to reopen.
  */
 @Composable
-private fun StatusTitle(state: GameState, onReopen: (() -> Unit)? = null) {
+private fun StatusTitle(state: GameState, onPress: (() -> Unit)? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (onReopen == null) Modifier else Modifier.clickable(onClick = onReopen),
+        modifier = if (onPress == null) Modifier else Modifier.clickable(onClick = onPress),
     ) {
         val turnStone = when (state.phase) {
-            Phase.PLAYING, Phase.THINKING -> state.toMove
+            Phase.PLAYING, Phase.THINKING, Phase.SETUP -> state.toMove
             else -> null
         }
         if (turnStone != null) {
@@ -357,6 +387,63 @@ private fun BottomBar(
     }
 }
 
+/**
+ * Black, White, Erase, Play - what a tap on the board does, and the way out.
+ *
+ * The first three are one choice and the last is an action, which is the same shape the
+ * playing bar has: three things you might do and, at the end, the one that commits. The
+ * chosen stone is solid and the others are outlined, the way every choice on the new-game
+ * screen is drawn, so nothing here needs a colour or a check mark to read on E Ink.
+ *
+ * There is no Undo and no Clear. A stone put down in the wrong place comes off with one
+ * tap of Erase, and a position not worth keeping is thrown away from the menu.
+ */
+@Composable
+private fun SetupBar(
+    placing: Stone?,
+    onPlacing: (Stone?) -> Unit,
+    onPlay: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for ((label, stone) in listOf("Black" to Stone.BLACK, "White" to Stone.WHITE, "Erase" to null)) {
+            val content: @Composable () -> Unit = {
+                TextMMD(text = label, fontSize = 14.sp, maxLines = 1)
+            }
+            if (placing == stone) {
+                ButtonMMD(
+                    onClick = { onPlacing(stone) },
+                    contentPadding = TIGHT,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                ) { content() }
+            } else {
+                OutlinedButtonMMD(
+                    onClick = { onPlacing(stone) },
+                    contentPadding = TIGHT,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                ) { content() }
+            }
+        }
+
+        ButtonMMD(
+            onClick = onPlay,
+            contentPadding = TIGHT,
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+        ) { TextMMD(text = "Play", fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
+    }
+}
+
 /** Four buttons across 360dp cannot afford the default 16dp of padding each side. */
 private val TIGHT = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 8.dp)
 
@@ -374,6 +461,7 @@ private val TIGHT = androidx.compose.foundation.layout.PaddingValues(horizontal 
 @Composable
 private fun MenuDialog(
     canResign: Boolean,
+    settingUp: Boolean,
     onResign: () -> Unit,
     onNewGame: () -> Unit,
     onDismiss: () -> Unit,
@@ -386,11 +474,15 @@ private fun MenuDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-        ) { TextMMD(text = "Back to game", fontSize = 15.sp) }
+        ) { TextMMD(text = if (settingUp) "Back to the board" else "Back to game", fontSize = 15.sp) }
         Spacer(Modifier.height(10.dp))
         ConfirmingButton(
             label = "New game",
-            armedLabel = "Give up this game — tap again",
+            armedLabel = if (settingUp) {
+                "Throw away this position — tap again"
+            } else {
+                "Give up this game — tap again"
+            },
             onConfirmed = onNewGame,
         )
         Spacer(Modifier.height(10.dp))
@@ -443,6 +535,8 @@ private fun ConfirmingButton(
 
 private fun GameState.statusText(): String = when (phase) {
     Phase.STARTING -> "Starting…"
+    // The glyph beside this says which colour, the way it does mid-game.
+    Phase.SETUP -> "plays first"
     Phase.THINKING -> "Thinking…"
     Phase.BROKEN -> "Engine stopped"
     Phase.FINISHED -> result ?: "Game over"

@@ -6,6 +6,7 @@ import com.wanderwildwood.kuroban.game.Point
 import com.wanderwildwood.kuroban.game.Stone
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import java.io.File
 import java.io.IOException
 
 class GnuGoException(message: String) : Exception(message)
@@ -169,6 +170,31 @@ class GnuGo(private val binaryPath: String) {
             "The engine stopped during '$command'"
         }
     }
+
+    /**
+     * Replaces whatever is on the board with the position in [file], and returns the
+     * colour that file says is to play.
+     *
+     * Komi and level are sent again afterwards rather than assumed to have survived. They
+     * are engine settings rather than board state and ought not to be touched by loading
+     * a file, but the SGF carries a komi of its own, and a setting that is wrong by one
+     * point is not a thing anybody would notice until a game was counted.
+     */
+    fun loadPosition(file: File, komi: Double, level: Int): Stone {
+        val toPlay = send("loadsgf ${file.absolutePath}").trim().lowercase()
+        send("komi $komi")
+        send("level $level")
+        return if (toPlay.startsWith("w")) Stone.WHITE else Stone.BLACK
+    }
+
+    /**
+     * How many liberties the group at [point] has. The point must not be empty.
+     *
+     * This is the one question a hand-placed position needs asking, since SGF will hold
+     * stones the rules would already have taken off the board.
+     */
+    fun liberties(point: Point): Int =
+        send("countlib ${point.toVertex()}").trim().toIntOrNull() ?: 0
 
     fun play(color: Stone, point: Point?) {
         send("play ${color.gtp} ${point?.toVertex() ?: "pass"}")

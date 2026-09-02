@@ -23,6 +23,17 @@ enum class Stone {
 data class Point(val col: Int, val row: Int)
 
 /**
+ * The four points sharing a line with this one, minus any off the board.
+ *
+ * Grid arithmetic, not a rule of Go. The app still asks the engine every question that
+ * has a Go answer - this only says which points are worth asking about, since placing a
+ * stone can only change the liberties of its own group and of whatever it touches.
+ */
+fun Point.neighbours(): List<Point> = listOf(
+    Point(col - 1, row), Point(col + 1, row), Point(col, row - 1), Point(col, row + 1),
+).filter { it.col in 0 until BOARD_SIZE && it.row in 0 until BOARD_SIZE }
+
+/**
  * COMPUTER is shown as "GNU Go", since that is what it is. The name here stays as it is:
  * it is written into every saved game, and renaming it would throw away a game in
  * progress to change a word nobody sees.
@@ -53,15 +64,37 @@ enum class Difficulty(val level: Int, val label: String) {
     NORMAL(5, "Normal"),
 }
 
+/**
+ * A position put on the board by hand, instead of starting from an empty one.
+ *
+ * This is what a problem out of a book is: some stones, in no particular order, and a
+ * note saying who plays. It is deliberately not a list of moves - most positions worth
+ * setting up could not have been reached by alternating play, and none of them care how
+ * they were reached.
+ */
+data class Setup(
+    val black: Set<Point> = emptySet(),
+    val white: Set<Point> = emptySet(),
+    val toMove: Stone = Stone.BLACK,
+)
+
 data class GameConfig(
     val opponent: Opponent = Opponent.COMPUTER,
     val difficulty: Difficulty = Difficulty.NORMAL,
     val humanColor: Stone = Stone.BLACK,
     /** Free stones for Black before play starts. 0, or 2 upwards - a handicap of 1 means nothing. */
     val handicap: Int = 0,
+    /**
+     * The position play starts from, or null for an empty board.
+     *
+     * Non-null also means the game began in the board editor - an empty [Setup] is a
+     * position somebody is still placing stones into, not the absence of one.
+     */
+    val setup: Setup? = null,
 ) {
     /** The handicap stones are Black's, so in a handicap game White opens. */
-    val firstToMove: Stone get() = if (handicap >= 2) Stone.WHITE else Stone.BLACK
+    val firstToMove: Stone
+        get() = setup?.toMove ?: if (handicap >= 2) Stone.WHITE else Stone.BLACK
 
     /** In a handicap game the stones are the compensation, so komi all but disappears. */
     val komi: Double get() = if (handicap >= 2) HANDICAP_KOMI else KOMI
@@ -70,6 +103,9 @@ data class GameConfig(
 enum class Phase {
     /** Waiting on the engine to start up. */
     STARTING,
+
+    /** Placing stones on the board by hand, before any of them count as moves. */
+    SETUP,
     PLAYING,
 
     /** The computer is choosing a move; the board does not take taps. */

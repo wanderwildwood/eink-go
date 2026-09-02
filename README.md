@@ -24,6 +24,11 @@ already ships with, with GNU Go bundled as the engine.
   pass-and-play.
 - Handicap of 2 to 5 stones. A difficulty setting cannot make an engine a fair contest for a
   beginner; handicap can.
+- Set up a position by hand and play it out. Put black and white stones anywhere, say which
+  colour plays, and the game carries on from there with everything else unchanged - Hint,
+  taking a move back, and counting at the end. It is the plainest way to work through a
+  problem out of a book, which is how people studied Go for a thousand years before an app
+  offered to mark their answers for them.
 - Hint asks the engine what it would play and offers it as a preview stone, so you can
   accept it or ignore it. Nothing is committed by asking.
 - Tap to preview, tap again to place. A stone is never played by a stray touch. The

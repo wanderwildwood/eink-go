@@ -35,6 +35,7 @@ import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
 import com.wanderwildwood.kuroban.game.Difficulty
 import com.wanderwildwood.kuroban.game.GameConfig
 import com.wanderwildwood.kuroban.game.Opponent
+import com.wanderwildwood.kuroban.game.Setup
 import com.wanderwildwood.kuroban.game.Stone
 
 /**
@@ -133,22 +134,47 @@ fun NewGameScreen(onPlay: (GameConfig) -> Unit) {
                 }
             }
 
-            ButtonMMD(
-                onClick = {
-                    onPlay(
-                        GameConfig(
-                            opponent = opponent,
-                            difficulty = difficulty,
-                            humanColor = humanColor,
-                            handicap = handicap,
+            // Two ways to begin, sharing one row. A third labelled row would not fit -
+            // four of them and the button already fill this screen on the Kompakt - and
+            // setting a position up is a way of starting rather than a setting anyway.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButtonMMD(
+                    onClick = {
+                        onPlay(
+                            GameConfig(
+                                opponent = opponent,
+                                difficulty = difficulty,
+                                humanColor = humanColor,
+                                // Placing the stones yourself is what a handicap does for
+                                // you, so the two do not both happen.
+                                handicap = 0,
+                                setup = Setup(toMove = Stone.BLACK),
+                            )
                         )
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-            ) {
-                TextMMD(text = "Play", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                ) {
+                    TextMMD(text = "Set up", fontSize = 18.sp, maxLines = 1)
+                }
+                ButtonMMD(
+                    onClick = {
+                        onPlay(
+                            GameConfig(
+                                opponent = opponent,
+                                difficulty = difficulty,
+                                humanColor = humanColor,
+                                handicap = handicap,
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                ) {
+                    TextMMD(text = "Play", fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                }
             }
         }
     }
