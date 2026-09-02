@@ -15,8 +15,8 @@ android {
         // The Kompakt runs Android 12 (API 31); nothing here needs anything newer.
         minSdk = 31
         targetSdk = 31
-        versionCode = 12
-        versionName = "1.1.4"
+        versionCode = 13
+        versionName = "1.2.0"
 
         ndk {
             // The bundled engine is built for the Kompakt and nothing else.
